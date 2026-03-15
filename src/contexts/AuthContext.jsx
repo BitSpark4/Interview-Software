@@ -84,7 +84,7 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await supabase
         .from('users')
-        .select('id, email, name, plan, interviews_used, total_sessions, average_score, streak_count, resume_url, target_role')
+        .select('id, email, name, plan, interviews_used, total_sessions, average_score, streak_count, resume_url, resume_filename, resume_uploaded_at, skills, target_role, created_at')
         .eq('id', userId)
         .single()
       if (mounted.current) setUserProfile(data ?? null)
@@ -131,8 +131,13 @@ export function AuthProvider({ children }) {
     }
   }
 
+  async function refreshProfile() {
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (currentUser) fetchProfile(currentUser.id)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, userProfile, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

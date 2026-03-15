@@ -109,6 +109,40 @@ Question ${questionNumber} of 5.${questionNumber === 5 ? ' LAST question — set
   }
 }
 
+// ── analyzeResume ─────────────────────────────────────────────────────────────
+export async function analyzeResume(resumeText) {
+  const system = `Analyze this resume and extract the following in JSON only:
+{
+  "technical_skills": [
+    { "name": "React", "category": "frontend", "level": "advanced" }
+  ],
+  "experience_years": 3,
+  "current_role": "Frontend Developer",
+  "education": "B.Tech Computer Science",
+  "ats_score": 72,
+  "ats_feedback": ["Add more quantified achievements", "Include LinkedIn URL"],
+  "top_strengths": ["React ecosystem", "API integration"],
+  "improvement_areas": ["System design", "Cloud services"]
+}
+Categories for technical_skills: frontend, backend, database, devops, mobile, tools, soft
+Return only JSON. No other text.`
+
+  const raw = await callClaude({
+    system,
+    messages: [{ role: 'user', content: resumeText.slice(0, 3000) }],
+    maxTokens: 1000,
+    model: HAIKU,
+  })
+
+  try {
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    return JSON.parse(match[0])
+  } catch {
+    return null
+  }
+}
+
 // ── generateReport ────────────────────────────────────────────────────────────
 export async function generateReport({ conversationHistory, role, interviewType }) {
   const system = `You are an interviewer. Generate a final interview report.

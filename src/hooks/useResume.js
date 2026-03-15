@@ -1,21 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { parsePdf } from '../utils/pdfParser'
+import { analyzeResume } from '../lib/claudeApi'
 
-/**
- * Handles the full resume flow:
- *  1. Parse PDF → extract text in browser (pdfjs-dist)
- *  2. Upload PDF file to Supabase Storage (bucket: resumes)
- *  3. Save resume_url + resume_text to users table
- *
- * Returns resumeText for passing directly to Claude.
- */
 export function useResume() {
-  const [resumeText, setResumeText] = useState('')
-  const [resumeFile, setResumeFile] = useState(null)
-  const [uploading, setUploading]   = useState(false)
-  const [uploadDone, setUploadDone] = useState(false)
-  const [error, setError]           = useState('')
+  const [resumeText, setResumeText]     = useState('')
+  const [resumeFile, setResumeFile]     = useState(null)
+  const [uploading, setUploading]       = useState(false)
+  const [uploadDone, setUploadDone]     = useState(false)
+  const [error, setError]               = useState('')
+  const [savedResume, setSavedResume]   = useState(null) // { filename, text, uploadedAt } or null
+  const [loadingProfile, setLoadingProfile] = useState(true)
+
+  // Load saved resume from DB on mount
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data } = await supabase
+          .from('users')
+          .select('resume_text, resume_filename, resume_uploaded_at')
+          .eq('id', user.id)
+          .single()
+
+        if (data?.resume_text) {
+          setSavedResume({
+            text:       data.resume_text,
+            filename:   data.resume_filename || 'resume.pdf',
+            uploadedAt: data.resume_uploaded_at,
+          })
+          setResumeText(data.resume_text)
+          setUploadDone(true)
+        }
+      } catch { /* not signed in yet — ignore */ }
+      finally { setLoadingProfile(false) }
+    }
+    load()
+  }, [])
 
   async function processResume(file) {
     setError('')
@@ -24,31 +47,38 @@ export function useResume() {
     setResumeFile(file)
 
     try {
-      // Step 1 — extract text in browser
+      // 1 — extract text in browser
       const text = await parsePdf(file)
 
-      // Step 2 — upload PDF to Supabase Storage
+      // 2 — upload PDF to Supabase Storage (overwrite if exists)
       const { data: { user } } = await supabase.auth.getUser()
-      const fileName = `${user.id}/resume.pdf`   // overwrite on re-upload
+      const filePath = `${user.id}/resume.pdf`
 
       const { error: uploadErr } = await supabase.storage
         .from('resumes')
-        .upload(fileName, file, { upsert: true, contentType: 'application/pdf' })
+        .upload(filePath, file, { upsert: true, contentType: 'application/pdf' })
 
       if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`)
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('resumes')
-        .getPublicUrl(fileName)
+      // 3 — save to users table
+      const now = new Date().toISOString()
+      await supabase.from('users').update({
+        resume_url:          filePath,
+        resume_text:         text.slice(0, 5000),
+        resume_filename:     file.name,
+        resume_uploaded_at:  now,
+      }).eq('id', user.id)
 
-      // Step 3 — persist to user profile (cap text at 5000 chars to stay within DB limits)
-      await supabase
-        .from('users')
-        .update({ resume_url: publicUrl, resume_text: text.slice(0, 5000) })
-        .eq('id', user.id)
-
+      const saved = { text, filename: file.name, uploadedAt: now }
       setResumeText(text)
+      setSavedResume(saved)
       setUploadDone(true)
+
+      // 4 — skill analysis in background (fire-and-forget, non-critical)
+      analyzeResume(text).then(skills => {
+        if (skills) supabase.from('users').update({ skills }).eq('id', user.id)
+      }).catch(() => {})
+
       return text
     } catch (err) {
       setError(err.message || 'Failed to process resume. Please try again.')
@@ -60,12 +90,18 @@ export function useResume() {
     }
   }
 
+  // Clear local state only — does NOT delete from DB
   function clearResume() {
     setResumeText('')
     setResumeFile(null)
     setUploadDone(false)
+    setSavedResume(null)
     setError('')
   }
 
-  return { resumeText, resumeFile, uploading, uploadDone, error, processResume, clearResume }
+  return {
+    resumeText, resumeFile, uploading, uploadDone, error,
+    savedResume, loadingProfile,
+    processResume, clearResume,
+  }
 }

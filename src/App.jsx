@@ -15,6 +15,8 @@ const InterviewSession= lazy(() => import('./pages/InterviewSession'))
 const Report          = lazy(() => import('./pages/Report'))
 const Progress        = lazy(() => import('./pages/Progress'))
 const Upgrade         = lazy(() => import('./pages/Upgrade'))
+const Profile         = lazy(() => import('./pages/Profile'))
+const ResetPassword   = lazy(() => import('./pages/ResetPassword'))
 
 export default function App() {
   return (
@@ -24,7 +26,8 @@ export default function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/"    element={<PublicRoute><Landing /></PublicRoute>} />
-              <Route path="/auth"element={<PublicRoute><Auth /></PublicRoute>} />
+              <Route path="/auth"           element={<PublicRoute><Auth /></PublicRoute>} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               <Route path="/dashboard"           element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/interview/setup"     element={<ProtectedRoute><InterviewSetup /></ProtectedRoute>} />
@@ -32,6 +35,7 @@ export default function App() {
               <Route path="/report/:id"          element={<ProtectedRoute><Report /></ProtectedRoute>} />
               <Route path="/progress"            element={<ProtectedRoute><Progress /></ProtectedRoute>} />
               <Route path="/upgrade"             element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
+              <Route path="/profile"            element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

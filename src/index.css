@@ -3,6 +3,23 @@
 @theme {
   --font-mono: 'IBM Plex Mono', monospace;
   --font-sans: 'Inter', sans-serif;
+
+  /* Design tokens */
+  --color-page:        #0B0F19;
+  --color-sidebar:     #0F172A;
+  --color-card:        #111827;
+  --color-card-hover:  #1F2937;
+  --color-input:       #1F2937;
+  --color-border:      #1F2937;
+  --color-border-hover:#374151;
+
+  --color-brand:       #22C55E;
+  --color-brand-hover: #16A34A;
+
+  --color-text-primary:   #F9FAFB;
+  --color-text-secondary: #9CA3AF;
+  --color-text-muted:     #6B7280;
+  --color-text-disabled:  #4B5563;
 }
 
 /* Base resets */
@@ -12,13 +29,19 @@
 
 body {
   margin: 0;
-  background-color: #0a0a0f;
+  background-color: #0B0F19;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   min-width: 375px;
+  color: #F9FAFB;
 }
 
+/* Inter for all — monospace only for code */
 h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', sans-serif;
+}
+
+code, pre, .font-mono {
   font-family: 'IBM Plex Mono', monospace;
 }
 

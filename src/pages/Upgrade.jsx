@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import Navbar from '../components/Navbar'
+import { Crown, Check, Zap, Lock, ChevronDown, ChevronUp } from 'lucide-react'
+import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import ErrorMessage from '../components/ErrorMessage'
 import { useAuth } from '../hooks/useAuth'
@@ -8,7 +9,7 @@ import { runPayment } from '../lib/razorpay'
 
 const FEATURES = [
   'Unlimited interviews every month',
-  'Resume-aware personalized questions',
+  'Resume-aware personalised questions',
   'STAR method coaching on every answer',
   'Progress tracking & weak area analysis',
   'Company-specific question style (TCS, startups, product)',
@@ -27,83 +28,82 @@ export default function Upgrade() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [success, setSuccess] = useState(false)
+  const [openFaq, setOpenFaq] = useState(null)
+
+  const isPro = userProfile?.plan === 'pro'
 
   async function handlePayment() {
     if (!user) return
     setError('')
     setLoading(true)
-
     try {
       await runPayment({ userId: user.id, userEmail: user.email })
       setSuccess(true)
     } catch (err) {
-      if (err.message !== '__cancelled__') {
-        setError(err.message || 'Payment failed. Please try again.')
-      }
+      if (err.message !== '__cancelled__') setError(err.message || 'Payment failed. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  // ── Success screen ──────────────────────────────────────────────────────
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="text-5xl mb-4">🎉</div>
-          <h1 className="font-mono font-bold text-white text-2xl mb-2">You're Pro now!</h1>
-          <p className="text-gray-400 text-sm mb-8">
-            Unlimited interviews unlocked. Go practice.
-          </p>
-          <Link
-            to="/dashboard"
-            className="inline-block bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-3.5 rounded-lg transition-colors"
-          >
-            Go to Dashboard →
-          </Link>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[70vh] px-4">
+          <div className="text-center max-w-sm">
+            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
+              <Crown size={36} className="text-emerald-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">You're Pro now!</h1>
+            <p className="text-gray-400 text-sm mb-8">Unlimited interviews unlocked. Go practice.</p>
+            <Link to="/dashboard" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-3.5 rounded-xl transition-colors">
+              <Zap size={16} /> Go to Dashboard
+            </Link>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
-  const isPro = userProfile?.plan === 'pro'
-
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      <Navbar />
-      <div className="max-w-lg mx-auto px-4 py-10">
-        <Link to="/dashboard" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
-          ← Go back
-        </Link>
+    <AppLayout>
+      <div className="p-4 md:p-8 max-w-2xl space-y-6">
 
-        <div className="mt-6 text-center mb-8">
-          <p className="text-4xl mb-3">🚀</p>
-          <h1 className="font-mono font-bold text-white text-2xl mb-1">Upgrade to Pro</h1>
-          <p className="text-gray-500 text-sm">Unlock unlimited practice</p>
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Crown size={24} className="text-emerald-400" /> Upgrade to Pro
+          </h1>
+          <p className="text-gray-500 text-sm mt-1">Unlock unlimited practice and AI-powered coaching</p>
         </div>
 
-        {/* Already Pro */}
+        {/* Already Pro banner */}
         {isPro && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5 mb-6 text-center">
-            <p className="text-emerald-400 font-mono font-bold mb-1">You're already on Pro ✓</p>
-            <p className="text-gray-400 text-sm">Enjoy unlimited interviews.</p>
+          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5 flex items-center gap-3">
+            <Crown size={20} className="text-emerald-400 shrink-0" />
+            <div>
+              <p className="text-emerald-400 font-semibold">You're already on Pro</p>
+              <p className="text-gray-400 text-sm">Enjoy unlimited interviews.</p>
+            </div>
           </div>
         )}
 
         {/* Pricing card */}
-        <div className="bg-gray-900 border border-emerald-500/50 rounded-xl p-6 mb-6 relative">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
+        <div className="bg-gray-900 border-2 border-emerald-500/50 rounded-xl p-6 relative">
+          <div className="absolute -top-3 left-6 bg-emerald-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
             MOST POPULAR
           </div>
-          <p className="font-mono font-bold text-white text-4xl mb-1">
-            ₹199<span className="text-gray-500 text-base font-normal">/month</span>
-          </p>
-          <p className="text-gray-600 text-xs mb-6">Cancel anytime · No hidden fees · UPI accepted</p>
+
+          <div className="mb-6">
+            <p className="font-mono font-bold text-white text-5xl mb-1">
+              ₹199<span className="text-gray-500 text-lg font-normal">/month</span>
+            </p>
+            <p className="text-gray-500 text-sm">Cancel anytime · No hidden fees · UPI accepted</p>
+          </div>
 
           <ul className="space-y-3 mb-8">
             {FEATURES.map(f => (
-              <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                <span className="text-emerald-400 shrink-0 mt-0.5">✓</span>
+              <li key={f} className="flex items-start gap-2.5 text-sm text-gray-300">
+                <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
                 {f}
               </li>
             ))}
@@ -112,11 +112,7 @@ export default function Upgrade() {
           <ErrorMessage message={error} />
 
           {isPro ? (
-            <button
-              type="button"
-              disabled
-              className="w-full bg-gray-800 text-gray-500 cursor-not-allowed font-bold py-4 rounded-lg text-sm"
-            >
+            <button type="button" disabled className="w-full bg-gray-800 text-gray-500 cursor-not-allowed font-bold py-4 rounded-xl text-sm">
               Already on Pro ✓
             </button>
           ) : (
@@ -124,40 +120,46 @@ export default function Upgrade() {
               type="button"
               onClick={handlePayment}
               disabled={loading}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 min-h-11"
+              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
             >
-              {loading && <Spinner size={16} color="border-black" />}
+              {loading ? <Spinner size={16} color="border-black" /> : <Zap size={16} />}
               {loading ? 'Processing…' : 'Pay ₹199 — Upgrade Now'}
             </button>
           )}
 
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <img
-              src="https://razorpay.com/assets/razorpay-glyph.svg"
-              alt="Razorpay"
-              className="h-4 opacity-40"
-              onError={e => { e.target.style.display = 'none' }}
-            />
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <Lock size={12} className="text-gray-600" />
             <p className="text-gray-600 text-xs">Secured by Razorpay · PCI DSS compliant</p>
           </div>
         </div>
 
-        {/* Trust */}
-        <p className="text-gray-600 text-sm text-center mb-8">
-          Join 1,000+ Indian professionals practicing daily
-        </p>
+        <p className="text-gray-600 text-sm text-center">Join 1,000+ Indian professionals practicing daily</p>
 
         {/* FAQ */}
-        <div className="space-y-3">
-          <h2 className="font-mono font-bold text-white text-sm mb-4">Frequently Asked</h2>
-          {FAQS.map(faq => (
-            <div key={faq.q} className="border border-gray-800 rounded-lg p-4">
-              <p className="text-gray-300 text-sm font-medium mb-1">{faq.q}</p>
-              <p className="text-gray-500 text-sm">{faq.a}</p>
-            </div>
-          ))}
+        <div>
+          <h2 className="text-white font-semibold mb-3">Frequently Asked</h2>
+          <div className="space-y-2">
+            {FAQS.map((faq, i) => (
+              <div key={faq.q} className="border border-gray-800 rounded-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-800/50 transition-colors"
+                >
+                  <p className="text-gray-300 text-sm font-medium">{faq.q}</p>
+                  {openFaq === i ? <ChevronUp size={16} className="text-gray-500 shrink-0" /> : <ChevronDown size={16} className="text-gray-500 shrink-0" />}
+                </button>
+                {openFaq === i && (
+                  <div className="px-5 pb-4 border-t border-gray-800">
+                    <p className="text-gray-500 text-sm pt-3">{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
-    </div>
+    </AppLayout>
   )
 }
