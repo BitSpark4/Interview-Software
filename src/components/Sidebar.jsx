@@ -1,7 +1,7 @@
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   LayoutGrid, Play, BarChart2,
-  User, LogOut, MoreHorizontal, X,
+  User, LogOut, MoreHorizontal, X, Shield,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -15,13 +15,15 @@ const ACCOUNT_NAV = [
   { to: '/profile', icon: User, label: 'Profile', match: p => p === '/profile' },
 ]
 
-function NavItem({ to, icon: Icon, label, onClick, isActive }) {
+function NavItem({ to, icon: Icon, label, onClick, isActive, adminStyle }) {
+  const activeColor = adminStyle ? '#F59E0B' : '#22C55E'
+  const activeBg    = adminStyle ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)'
   return (
     <Link
       to={to}
       onClick={onClick}
       className={`flex items-center gap-[10px] cursor-pointer transition-all duration-150 ${
-        isActive ? 'text-[#22C55E] font-semibold' : 'text-[#9CA3AF] font-medium hover:text-[#F9FAFB]'
+        isActive ? 'font-semibold' : 'text-[#9CA3AF] font-medium hover:text-[#F9FAFB]'
       }`}
       style={{
         height: 40,
@@ -29,9 +31,10 @@ function NavItem({ to, icon: Icon, label, onClick, isActive }) {
         paddingRight: 12,
         margin: isActive ? '0 8px 0 0' : '0 8px',
         borderRadius: isActive ? '0 8px 8px 0' : 8,
-        background: isActive ? 'rgba(34,197,94,0.12)' : 'transparent',
-        borderLeft: isActive ? '3px solid #22C55E' : '3px solid transparent',
+        background: isActive ? activeBg : 'transparent',
+        borderLeft: isActive ? `3px solid ${activeColor}` : '3px solid transparent',
         fontSize: 14,
+        color: isActive ? activeColor : undefined,
         textDecoration: 'none',
       }}
       onMouseEnter={e => {
@@ -41,7 +44,7 @@ function NavItem({ to, icon: Icon, label, onClick, isActive }) {
         if (!isActive) e.currentTarget.style.background = 'transparent'
       }}
     >
-      <Icon size={16} color={isActive ? '#22C55E' : '#6B7280'} />
+      <Icon size={16} color={isActive ? activeColor : '#6B7280'} />
       {label}
     </Link>
   )
@@ -114,6 +117,18 @@ export default function Sidebar({ mobileOpen, onClose }) {
             <NavItem key={`acc-${i}`} {...item} onClick={onClose} isActive={item.match(pathname)} />
           ))}
         </div>
+
+        {/* Admin link — only for admin users */}
+        {userProfile?.is_admin && (
+          <>
+            <SectionLabel label="ADMIN" />
+            <NavItem
+              to="/admin" icon={Shield} label="Admin"
+              onClick={onClose} isActive={pathname === '/admin'}
+              adminStyle
+            />
+          </>
+        )}
       </nav>
 
       {/* Bottom user area */}

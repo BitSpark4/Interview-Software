@@ -143,6 +143,63 @@ Return only JSON. No other text.`
   }
 }
 
+// ── analyzeResumeATS ──────────────────────────────────────────────────────────
+export async function analyzeResumeATS(resumeText) {
+  const system = `You are an ATS (Applicant Tracking System) expert.
+Analyze this resume and return ONLY this JSON:
+{
+  "score": 72,
+  "grade": "Good",
+  "breakdown": {
+    "contact_info": 8,
+    "work_experience": 20,
+    "quantified_achievements": 12,
+    "keywords": 15,
+    "education": 8,
+    "skills_section": 7,
+    "formatting": 4
+  },
+  "improvements": ["improvement 1","improvement 2","improvement 3","improvement 4","improvement 5"],
+  "strengths": ["strength 1","strength 2","strength 3"],
+  "missing_keywords": ["keyword1","keyword2","keyword3"]
+}
+Grade: 80-100=Excellent, 60-79=Good, 40-59=Average, 0-39=Poor.
+Scoring guide — contact_info(max 10): name/email/phone/LinkedIn present; work_experience(max 25): clear job titles/dates/company; quantified_achievements(max 20): numbers/percentages/metrics used; keywords(max 20): industry-relevant keywords; education(max 10): degree/institution/year; skills_section(max 10): dedicated skills section; formatting(max 5): clean readable structure.
+Return only JSON. No other text.`
+
+  const raw = await callClaude({
+    system,
+    messages: [{ role: 'user', content: resumeText.slice(0, 3000) }],
+    maxTokens: 800,
+    model: HAIKU,
+  })
+
+  try {
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) throw new Error('No JSON')
+    return JSON.parse(match[0])
+  } catch {
+    // retry once
+    try {
+      const retry = await callClaude({
+        system,
+        messages: [
+          { role: 'user', content: resumeText.slice(0, 3000) },
+          { role: 'assistant', content: raw },
+          { role: 'user', content: 'Return only the JSON object, no other text.' },
+        ],
+        maxTokens: 800,
+        model: HAIKU,
+      })
+      const match2 = retry.match(/\{[\s\S]*\}/)
+      if (!match2) return null
+      return JSON.parse(match2[0])
+    } catch {
+      return null
+    }
+  }
+}
+
 // ── generateReport ────────────────────────────────────────────────────────────
 export async function generateReport({ conversationHistory, role, interviewType }) {
   const system = `You are an interviewer. Generate a final interview report.

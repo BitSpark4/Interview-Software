@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import {
   User, BarChart2, Trophy, Flame, Target, Play,
-  FileText, Settings, Zap, ChevronRight,
-  Upload, Pencil, Trash2,
+  FileText, Zap, ChevronRight, Upload, Pencil, Trash2,
+  Crown, Lock, CheckCircle, AlertCircle, FileSearch, RefreshCw, Settings,
 } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
@@ -52,7 +52,7 @@ const RANGE_OPTIONS = ['All time', '30 days', '7 days']
 export default function Profile() {
   const navigate = useNavigate()
   const { userProfile, refreshProfile } = useAuth()
-  const { savedResume, uploading, error: resumeError, processResume } = useResume()
+  const { savedResume, uploading, error: resumeError, processResume } = useResume(userProfile?.plan)
 
   const [sessions, setSessions]             = useState([])
   const [loadingSessions, setLoadingSessions] = useState(true)
@@ -62,13 +62,15 @@ export default function Profile() {
   const [savingName, setSavingName]         = useState(false)
   const [nameError, setNameError]           = useState('')
   const [fileError, setFileError]           = useState('')
+  const [reanalyzing, setReanalyzing]       = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteInput, setDeleteInput]       = useState('')
   const [deleting, setDeleting]             = useState(false)
 
-  const isPro      = userProfile?.plan === 'pro'
-  const skills     = userProfile?.skills
-  const atsScore   = skills?.ats_score ?? null
+  const isPro        = userProfile?.plan === 'pro'
+  const skills       = userProfile?.skills
+  const atsScore     = userProfile?.ats_score ?? null
+  const atsFeedback  = userProfile?.ats_feedback ?? null
   const name       = userProfile?.name || 'User'
   const initial    = name.charAt(0).toUpperCase()
   const memberSince = userProfile?.created_at
@@ -136,6 +138,22 @@ export default function Profile() {
     await supabase.from('users').delete().eq('id', user.id)
     await supabase.auth.signOut()
     navigate('/')
+  }
+
+  async function reanalyzeATS() {
+    if (!savedResume?.text || reanalyzing) return
+    setReanalyzing(true)
+    try {
+      const { analyzeResumeATS } = await import('../lib/claudeApi')
+      const ats = await analyzeResumeATS(savedResume.text)
+      if (ats) {
+        const { data: { user } } = await supabase.auth.getUser()
+        await supabase.from('users').update({
+          ats_score: ats.score, ats_feedback: ats, ats_analyzed_at: new Date().toISOString(),
+        }).eq('id', user.id)
+        refreshProfile?.()
+      }
+    } catch { /* ignore */ } finally { setReanalyzing(false) }
   }
 
   const stats = [
@@ -338,38 +356,139 @@ export default function Profile() {
             )}
           </div>
 
-          {/* ATS + Strengths card — green left border */}
-          <div
-            className="rounded-xl p-5"
-            style={{ background: '#111827', border: '1px solid #1F2937', borderLeft: '3px solid #22C55E' }}
-          >
+          {/* ATS Score card */}
+          <div className="rounded-xl p-5 relative overflow-hidden"
+            style={{ background: '#111827', border: '1px solid #1F2937', borderLeft: '3px solid #22C55E' }}>
             <p className="text-[14px] font-semibold mb-1" style={{ color: '#F9FAFB' }}>Resume ATS Score</p>
             <p className="text-[12px] mb-4" style={{ color: '#6B7280' }}>How ATS-friendly your resume is</p>
 
-            {atsScore != null ? (
-              <div className="flex items-start gap-6">
-                <AtsRing score={atsScore} />
-                <div className="flex-1 space-y-2">
-                  {skills?.ats_feedback?.slice(0, 3).map(tip => (
-                    <p key={tip} className="text-[12px] flex gap-1.5" style={{ color: '#9CA3AF' }}>
-                      <span style={{ color: '#F59E0B' }}>·</span> {tip}
-                    </p>
-                  ))}
+            {/* FREE PLAN — locked overlay */}
+            {!isPro ? (
+              <div>
+                {/* blurred fake content */}
+                <div style={{ filter: 'blur(6px)', pointerEvents: 'none', opacity: 0.4 }}>
+                  <AtsRing score={42} />
+                </div>
+                {/* lock overlay */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
+                  style={{ background: 'rgba(17,24,39,0.92)', borderRadius: 16 }}>
+                  <Crown size={32} color="#F59E0B" style={{ marginBottom: 10 }} />
+                  <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 8 }}>Pro Feature</p>
+                  <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, marginBottom: 16 }}>
+                    Get your ATS score and see exactly how to improve your resume to pass company filters automatically.
+                  </p>
+                  <a href="/upgrade"
+                    className="w-full flex items-center justify-center font-bold transition-all"
+                    style={{ height: 44, background: '#22C55E', color: '#000', fontSize: 14, fontWeight: 700, borderRadius: 10, textDecoration: 'none' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#16A34A'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#22C55E'}>
+                    Upgrade to Pro — ₹199/month
+                  </a>
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-                <p className="text-[13px]" style={{ color: '#6B7280' }}>Upload resume to get your ATS score</p>
-                <label
-                  htmlFor="ats-resume-upload"
+            ) : !savedResume ? (
+              /* PRO — no resume uploaded */
+              <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
+                <FileSearch size={32} color="#374151" />
+                <p style={{ fontSize: 13, color: '#6B7280' }}>Upload your resume to get ATS score</p>
+                <label htmlFor="ats-resume-upload"
                   className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-4 py-2 rounded-lg transition-all"
                   style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = '#22C55E'; e.currentTarget.style.color = '#22C55E' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#9CA3AF' }}
-                >
-                  <Upload size={13} /> Upload resume to get your ATS score
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#9CA3AF' }}>
+                  <Upload size={13} /> Upload Resume
                   <input id="ats-resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
                 </label>
+              </div>
+            ) : atsScore != null ? (
+              /* PRO — has score */
+              <div className="space-y-5">
+                {/* Ring + grade */}
+                <div className="flex items-center gap-5">
+                  <AtsRing score={atsScore} />
+                  <div>
+                    <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Overall Score</p>
+                    {atsFeedback?.strengths?.slice(0, 2).map(s => (
+                      <div key={s} className="flex items-start gap-1.5" style={{ marginBottom: 3 }}>
+                        <CheckCircle size={12} color="#22C55E" style={{ marginTop: 2, flexShrink: 0 }} />
+                        <p style={{ fontSize: 11, color: '#9CA3AF' }}>{s}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Breakdown */}
+                {atsFeedback?.breakdown && (
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', marginBottom: 10 }}>Score Breakdown</p>
+                    {Object.entries({
+                      'Contact Info':             { score: atsFeedback.breakdown.contact_info,             max: 10 },
+                      'Work Experience':          { score: atsFeedback.breakdown.work_experience,          max: 25 },
+                      'Quantified Achievements':  { score: atsFeedback.breakdown.quantified_achievements,  max: 20 },
+                      'Keywords':                 { score: atsFeedback.breakdown.keywords,                 max: 20 },
+                      'Education':                { score: atsFeedback.breakdown.education,                max: 10 },
+                      'Skills Section':           { score: atsFeedback.breakdown.skills_section,           max: 10 },
+                      'Formatting':               { score: atsFeedback.breakdown.formatting,               max: 5  },
+                    }).map(([label, { score, max }]) => (
+                      <div key={label} style={{ marginBottom: 8 }}>
+                        <div className="flex justify-between" style={{ marginBottom: 3 }}>
+                          <span style={{ fontSize: 12, color: '#9CA3AF' }}>{label}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: atsRingColor(atsScore) }}>{score}/{max}</span>
+                        </div>
+                        <div style={{ height: 3, background: '#1F2937', borderRadius: 2 }}>
+                          <div style={{ height: '100%', borderRadius: 2, width: `${(score / max) * 100}%`, background: atsRingColor(atsScore), transition: 'width 0.6s ease' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Improvements */}
+                {atsFeedback?.improvements?.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B', marginBottom: 8 }}>📈 How to improve</p>
+                    {atsFeedback.improvements.map(tip => (
+                      <div key={tip} className="flex items-start gap-1.5" style={{ marginBottom: 5 }}>
+                        <AlertCircle size={12} color="#F59E0B" style={{ marginTop: 2, flexShrink: 0 }} />
+                        <p style={{ fontSize: 12, color: '#9CA3AF' }}>{tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Missing keywords */}
+                {atsFeedback?.missing_keywords?.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', marginBottom: 8 }}>🔑 Missing Keywords</p>
+                    <div className="flex flex-wrap gap-2">
+                      {atsFeedback.missing_keywords.map(kw => (
+                        <span key={kw} style={{ fontSize: 11, color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 10px', borderRadius: 20 }}>
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reanalyze */}
+                <button onClick={reanalyzeATS} disabled={reanalyzing}
+                  className="flex items-center gap-1.5 transition-all"
+                  style={{ fontSize: 13, color: reanalyzing ? '#4B5563' : '#9CA3AF', background: 'transparent', border: '1px solid #374151', padding: '6px 14px', borderRadius: 8, cursor: reanalyzing ? 'not-allowed' : 'pointer' }}
+                  onMouseEnter={e => { if (!reanalyzing) e.currentTarget.style.borderColor = '#4B5563' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151' }}>
+                  <RefreshCw size={13} className={reanalyzing ? 'animate-spin' : ''} />
+                  {reanalyzing ? 'Analyzing…' : 'Reanalyze ATS Score'}
+                </button>
+              </div>
+            ) : (
+              /* PRO — resume uploaded but ATS not yet analyzed */
+              <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
+                <p style={{ fontSize: 13, color: '#6B7280' }}>ATS analysis pending</p>
+                <button onClick={reanalyzeATS} disabled={reanalyzing}
+                  className="flex items-center gap-2 font-semibold transition-all"
+                  style={{ height: 36, padding: '0 16px', background: '#22C55E', color: '#000', fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer' }}>
+                  {reanalyzing ? <><RefreshCw size={13} className="animate-spin" /> Analyzing…</> : <>Analyze Now</>}
+                </button>
               </div>
             )}
           </div>

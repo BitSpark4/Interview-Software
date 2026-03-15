@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import PublicRoute from './components/PublicRoute'
 import ProtectedRoute from './components/ProtectedRoute'
+import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageLoader from './components/PageLoader'
 
@@ -17,6 +18,7 @@ const Progress        = lazy(() => import('./pages/Progress'))
 const Upgrade         = lazy(() => import('./pages/Upgrade'))
 const Profile         = lazy(() => import('./pages/Profile'))
 const ResetPassword   = lazy(() => import('./pages/ResetPassword'))
+const Admin           = lazy(() => import('./pages/Admin'))
 
 export default function App() {
   return (
@@ -36,6 +38,8 @@ export default function App() {
               <Route path="/progress"            element={<ProtectedRoute><Progress /></ProtectedRoute>} />
               <Route path="/upgrade"             element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
               <Route path="/profile"            element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+              <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Play, Target, BarChart2, Trophy,
-  Eye, CircleDot, ChevronRight,
+  Eye, CircleDot, ChevronRight, Award, Lock,
 } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import UpgradeModal from '../components/UpgradeModal'
@@ -68,10 +68,13 @@ export default function Dashboard() {
     load()
   }, [user])
 
-  const bestScore  = sessions.reduce((m, s) => Math.max(m, s.total_score || 0), 0)
-  const firstName  = userProfile?.name?.split(' ')[0] || 'there'
-  const avgScore   = userProfile?.average_score ? parseFloat(userProfile.average_score) : null
+  const bestScore     = sessions.reduce((m, s) => Math.max(m, s.total_score || 0), 0)
+  const firstName     = userProfile?.name?.split(' ')[0] || 'there'
+  const avgScore      = userProfile?.average_score ? parseFloat(userProfile.average_score) : null
   const totalSessions = userProfile?.total_sessions || sessions.length || 0
+  const hasResume     = !!userProfile?.resume_filename
+  const atsScore      = userProfile?.ats_score ?? null
+  const atsFeedback   = userProfile?.ats_feedback ?? null
 
   function startWithRole(roleId) {
     if (!canStartInterview) { setShowUpgradeModal(true); return }
@@ -306,6 +309,36 @@ export default function Dashboard() {
             </p>
             <p style={{ fontSize: 13, color: '#6B7280' }}>Personal best</p>
           </div>
+
+          {/* ATS Score — only shown when resume uploaded */}
+          {hasResume && (
+            isPro && atsScore != null ? (
+              <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>ATS Score</span>
+                  <Award size={20} color={scoreColor(atsScore / 10)} />
+                </div>
+                <p style={{ fontSize: 36, fontWeight: 700, color: scoreColor(atsScore / 10), margin: '0 0 2px 0' }}>
+                  {atsScore}
+                </p>
+                <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{atsFeedback?.grade || 'Analyzed'}</p>
+                <Link to="/profile" style={{ fontSize: 12, color: '#22C55E', fontWeight: 500 }} className="hover:underline">
+                  View details →
+                </Link>
+              </div>
+            ) : (
+              <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>ATS Score</span>
+                  <Lock size={20} color="#6B7280" />
+                </div>
+                <p style={{ fontSize: 16, fontWeight: 600, color: '#9CA3AF', margin: '0 0 4px 0' }}>Pro Feature</p>
+                <Link to="/upgrade" style={{ fontSize: 12, color: '#22C55E', fontWeight: 500 }} className="hover:underline">
+                  Upgrade →
+                </Link>
+              </div>
+            )
+          )}
         </div>
 
         {/* Recent Interviews */}
