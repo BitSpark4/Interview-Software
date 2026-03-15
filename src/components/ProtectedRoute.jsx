@@ -1,9 +1,10 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import Spinner from './Spinner'
 
 export default function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -13,7 +14,10 @@ export default function ProtectedRoute({ children }) {
     )
   }
 
-  if (!user) return <Navigate to="/auth" replace />
+  if (!user) {
+    // Preserve the page the user was trying to reach
+    return <Navigate to="/auth" state={{ from: location.pathname }} replace />
+  }
 
   return children
 }

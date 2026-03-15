@@ -1,35 +1,43 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import PublicRoute from './components/PublicRoute'
 import ProtectedRoute from './components/ProtectedRoute'
-import Landing from './pages/Landing'
-import Auth from './pages/Auth'
-import Dashboard from './pages/Dashboard'
-import InterviewSetup from './pages/InterviewSetup'
-import InterviewSession from './pages/InterviewSession'
-import Report from './pages/Report'
-import Progress from './pages/Progress'
-import Upgrade from './pages/Upgrade'
+import ErrorBoundary from './components/ErrorBoundary'
+import PageLoader from './components/PageLoader'
+
+// Lazy-load all pages — each page chunk downloads only when first visited
+const Landing         = lazy(() => import('./pages/Landing'))
+const Auth            = lazy(() => import('./pages/Auth'))
+const Dashboard       = lazy(() => import('./pages/Dashboard'))
+const InterviewSetup  = lazy(() => import('./pages/InterviewSetup'))
+const InterviewSession= lazy(() => import('./pages/InterviewSession'))
+const Report          = lazy(() => import('./pages/Report'))
+const Progress        = lazy(() => import('./pages/Progress'))
+const Upgrade         = lazy(() => import('./pages/Upgrade'))
 
 export default function App() {
   return (
-    <BrowserRouter>
-      {/* AuthProvider inside BrowserRouter so useNavigate works */}
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
-          <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/"    element={<PublicRoute><Landing /></PublicRoute>} />
+              <Route path="/auth"element={<PublicRoute><Auth /></PublicRoute>} />
 
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/interview/setup" element={<ProtectedRoute><InterviewSetup /></ProtectedRoute>} />
-          <Route path="/interview/session" element={<ProtectedRoute><InterviewSession /></ProtectedRoute>} />
-          <Route path="/report/:id" element={<ProtectedRoute><Report /></ProtectedRoute>} />
-          <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
-          <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
+              <Route path="/dashboard"           element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/interview/setup"     element={<ProtectedRoute><InterviewSetup /></ProtectedRoute>} />
+              <Route path="/interview/session"   element={<ProtectedRoute><InterviewSession /></ProtectedRoute>} />
+              <Route path="/report/:id"          element={<ProtectedRoute><Report /></ProtectedRoute>} />
+              <Route path="/progress"            element={<ProtectedRoute><Progress /></ProtectedRoute>} />
+              <Route path="/upgrade"             element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }

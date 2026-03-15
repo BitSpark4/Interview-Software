@@ -115,11 +115,20 @@ export function AuthProvider({ children }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
-    setUser(null)
-    setUserProfile(null)
-    lastFetchedUserId.current = null
-    navigate('/')
+    try {
+      // Clear all cached session data
+      sessionStorage.clear()
+      localStorage.removeItem('interviewiq_auth')
+
+      await supabase.auth.signOut()
+    } catch (err) {
+      console.error('signOut error:', err)
+    } finally {
+      setUser(null)
+      setUserProfile(null)
+      lastFetchedUserId.current = null
+      navigate('/')
+    }
   }
 
   return (

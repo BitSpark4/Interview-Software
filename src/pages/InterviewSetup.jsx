@@ -6,6 +6,8 @@ import Spinner from '../components/Spinner'
 import ErrorMessage from '../components/ErrorMessage'
 import { useInterview } from '../hooks/useInterview'
 import { useResume } from '../hooks/useResume'
+import { useAuth } from '../hooks/useAuth'
+import { checkRateLimit } from '../lib/rateLimiter'
 
 const ROLES = [
   { id: 'frontend',  icon: '💻', label: 'Frontend Developer' },
@@ -33,6 +35,7 @@ const COMPANIES = [
 
 export default function InterviewSetup() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { createSession }                                             = useInterview()
   const { resumeText, resumeFile, uploading, uploadDone, error: resumeError, processResume, clearResume } = useResume()
 
@@ -68,7 +71,10 @@ export default function InterviewSetup() {
 
   async function handleStart() {
     if (!role || !interviewType) return
-    if (uploading) return          // wait for resume parsing to finish
+    if (uploading) return
+
+    const rl = checkRateLimit(user?.id || 'anon', 'interview_start')
+    if (!rl.allowed) { setError(rl.message); return }
 
     setError('')
     setLoading(true)

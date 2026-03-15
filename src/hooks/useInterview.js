@@ -10,60 +10,34 @@ export function useInterview() {
   const [sessionId, setSessionId] = useState(null)
   const [sessionData, setSessionData] = useState(null)
   const [claudeHistory, setClaudeHistory] = useState([])
-  const [streamingText, setStreamingText] = useState('')
-  const [isStreaming, setIsStreaming] = useState(false)
   const [streamError, setStreamError] = useState('')
 
-  // ── streamFirstQuestion — fire-and-forget, streams Q1 into UI ──
+  // ── loadFirstQuestion — fire-and-forget, fetches Q1 via proxy ──
   async function streamFirstQuestion(sessionId, config) {
-    setIsStreaming(true)
-    setStreamingText('')
+    setLoading(true)
     setStreamError('')
 
     try {
-      const response = await startInterview({
+      const text = await startInterview({
         role: config.role,
         interviewType: config.interviewType,
         companyFocus: config.companyFocus,
         resumeText: config.resumeText,
       })
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ''
+      if (!text?.trim()) throw new Error('Empty response from AI. Please try again.')
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        for (const line of chunk.split('\n')) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (data === '[DONE]') continue
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
-              fullText += parsed.delta.text
-              setStreamingText(fullText)
-            }
-          } catch { /* skip malformed SSE line */ }
-        }
-      }
-
-      if (!fullText.trim()) throw new Error('Empty response from AI. Please try again.')
-
-      // Save to DB
       await supabase.from('messages').insert({
         session_id: sessionId,
         question_num: 1,
         sender: 'ai',
-        content: fullText,
+        content: text,
         is_question: true,
       })
 
       const initHistory = [
         { role: 'user', content: 'Begin the interview.' },
-        { role: 'assistant', content: fullText },
+        { role: 'assistant', content: text },
       ]
       sessionStorage.setItem(`ch_${sessionId}`, JSON.stringify(initHistory))
       setClaudeHistory(initHistory)
@@ -72,15 +46,14 @@ export function useInterview() {
         session_id: sessionId,
         question_num: 1,
         sender: 'ai',
-        content: fullText,
+        content: text,
         is_question: true,
       }])
       setQuestionNumber(1)
     } catch (err) {
       setStreamError(err.message || 'Failed to load first question. Please refresh.')
     } finally {
-      setIsStreaming(false)
-      setStreamingText('')
+      setLoading(false)
     }
   }
 
@@ -332,5 +305,5 @@ export function useInterview() {
     }
   }
 
-  return { messages, loading, setLoading, questionNumber, isComplete, sessionId, sessionData, streamingText, isStreaming, streamError, createSession, sendAnswer, loadSession }
+  return { messages, loading, setLoading, questionNumber, isComplete, sessionId, sessionData, streamError, createSession, sendAnswer, loadSession }
 }

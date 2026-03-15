@@ -4,13 +4,14 @@ import { useInterview } from '../hooks/useInterview'
 import Spinner from '../components/Spinner'
 import ErrorMessage from '../components/ErrorMessage'
 import MessageBubble from '../components/MessageBubble'
+import { validators } from '../utils/validators'
 
 export default function InterviewSession() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const sessionId = params.get('id')
 
-  const { messages, loading, setLoading, questionNumber, isComplete, sessionData, streamingText, isStreaming, streamError, loadSession, sendAnswer } = useInterview()
+  const { messages, loading, setLoading, questionNumber, isComplete, sessionData, streamError, loadSession, sendAnswer } = useInterview()
 
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
@@ -50,8 +51,10 @@ export default function InterviewSession() {
 
   async function handleSubmit(e) {
     e?.preventDefault()
-    if (!input.trim() || loading || isStreaming) return
-    const answer = input.trim()
+    if (loading) return
+    const answerErr = validators.interviewAnswer(input)
+    if (answerErr) { setError(answerErr); return }
+    const answer = validators.sanitize(input)
     setInput('')
     setError('')
     setLoading(true)
@@ -130,37 +133,12 @@ export default function InterviewSession() {
             .map(msg => <MessageBubble key={msg.id} message={msg} />)
           }
 
-          {/* Streaming Q1: dots before first char, then live text */}
-          {isStreaming && streamingText.length === 0 && (
-            <div className="flex items-start">
-              <div className="bg-gray-900 rounded-xl px-4 py-3 flex items-center gap-1.5">
-                {[0, 150, 300].map((delay, i) => (
-                  <span
-                    key={i}
-                    className="w-2 h-2 rounded-full bg-gray-500 inline-block animate-bounce"
-                    style={{ animationDelay: `${delay}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-          {isStreaming && streamingText.length > 0 && (
-            <div className="flex justify-start">
-              <div className="bg-gray-900 rounded-xl px-4 py-3 max-w-[85%]">
-                <p className="text-gray-100 text-sm leading-relaxed whitespace-pre-wrap">
-                  {streamingText}
-                  <span className="animate-pulse ml-0.5 text-emerald-400">|</span>
-                </p>
-              </div>
-            </div>
-          )}
-
           {/* Stream error */}
           {streamError && (
             <p className="text-red-400 text-sm">{streamError}</p>
           )}
 
-          {/* AI evaluating indicator (after user submits answer) */}
+          {/* AI thinking indicator */}
           {loading && !generatingReport && (
             <div className="flex items-start">
               <div className="bg-gray-900 rounded-xl px-4 py-3 flex items-center gap-2">
@@ -203,7 +181,7 @@ export default function InterviewSession() {
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your answer here…"
-                    disabled={loading || isStreaming}
+                    disabled={loading}
                     rows={3}
                     className="w-full bg-gray-800 border border-gray-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-white rounded-lg px-4 py-3 text-sm outline-none transition-colors resize-none disabled:opacity-50"
                   />
@@ -211,7 +189,7 @@ export default function InterviewSession() {
                 </div>
                 <button
                   type="submit"
-                  disabled={loading || isStreaming || !input.trim()}
+                  disabled={loading || !input.trim()}
                   className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold px-5 py-3 rounded-lg flex items-center gap-2 transition-colors min-h-11 shrink-0"
                 >
                   {loading ? <Spinner size={16} color="border-black" /> : 'Send'}

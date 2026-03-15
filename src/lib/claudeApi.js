@@ -1,37 +1,25 @@
-// All Claude API calls go through this file only. Never call fetch() in components.
-// startInterview  → claude-haiku-4-5  (fast, streaming)
-// evaluateAnswer  → claude-haiku-4-5  (fast, last 6 msgs only)
-// generateReport  → claude-sonnet-4-6 (quality, once per session)
+// All Claude calls go through /.netlify/functions/claude-proxy — key stays server-side.
+// Use `netlify dev` locally (port 8888) so functions run alongside the frontend.
 
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
+const PROXY_URL = '/.netlify/functions/claude-proxy'
+
 const HAIKU  = 'claude-haiku-4-5-20251001'
 const SONNET = 'claude-sonnet-4-6'
 
-function buildHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'x-api-key': import.meta.env.VITE_CLAUDE_API_KEY,
-    'anthropic-version': '2023-06-01',
-    'anthropic-dangerous-direct-browser-access': 'true',
-  }
-}
-
-// 30s timeout wrapper — prevents infinite loading
 async function fetchWithTimeout(url, options, timeoutMs = 30000) {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  const id = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal })
-    clearTimeout(timeoutId)
-    return response
-  } catch (error) {
-    clearTimeout(timeoutId)
-    if (error.name === 'AbortError') throw new Error('Request timed out. Please try again.')
-    throw error
+    const res = await fetch(url, { ...options, signal: controller.signal })
+    clearTimeout(id)
+    return res
+  } catch (err) {
+    clearTimeout(id)
+    if (err.name === 'AbortError') throw new Error('Request timed out. Please try again.')
+    throw err
   }
 }
 
-// Short system prompt — under 200 words, sent with every request
 function buildSystemPrompt(role, interviewType, companyFocus, resumeContext) {
   return `You are an interviewer at a top Indian tech company.
 Role: ${role} | Type: ${interviewType} | Company: ${companyFocus}
@@ -48,52 +36,33 @@ Rules:
 }
 
 async function callClaude({ system, messages, maxTokens = 1024, model = SONNET }) {
-  const key = import.meta.env.VITE_CLAUDE_API_KEY
-  if (!key) throw new Error('Missing VITE_CLAUDE_API_KEY in .env.local')
-
-  const res = await fetchWithTimeout(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+  const res = await fetchWithTimeout(PROXY_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
   })
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `Claude API error: ${res.status}`)
+    throw new Error(err?.error?.message || err?.error || `AI service error: ${res.status}`)
   }
 
   const data = await res.json()
   return data.content[0].text
 }
 
-// ── startInterview — returns streaming Response ───────────────────────────────
+// ── startInterview — returns first question text ──────────────────────────────
 export async function startInterview({ role, interviewType, companyFocus, resumeText }) {
-  const key = import.meta.env.VITE_CLAUDE_API_KEY
-  if (!key) throw new Error('Missing VITE_CLAUDE_API_KEY in .env.local')
-
   const resumeContext = resumeText ? resumeText.slice(0, 800) : null
-
-  const response = await fetchWithTimeout(CLAUDE_API_URL, {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify({
-      model: HAIKU,
-      max_tokens: 300,
-      stream: true,
-      system: buildSystemPrompt(role, interviewType, companyFocus, resumeContext),
-      messages: [{ role: 'user', content: 'Begin the interview. Ask question 1.' }],
-    }),
+  return callClaude({
+    model:     HAIKU,
+    maxTokens: 300,
+    system:    buildSystemPrompt(role, interviewType, companyFocus, resumeContext),
+    messages:  [{ role: 'user', content: 'Begin the interview. Ask question 1.' }],
   })
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}))
-    throw new Error(err?.error?.message || `Claude API error: ${response.status}`)
-  }
-
-  return response // stream — caller reads with getReader()
 }
 
-// ── evaluateAnswer — haiku, last 6 msgs only ─────────────────────────────────
+// ── evaluateAnswer ────────────────────────────────────────────────────────────
 export async function evaluateAnswer({
   conversationHistory, userAnswer, questionNumber,
   interviewType, role, companyFocus, resumeText,
@@ -114,45 +83,33 @@ Evaluate the answer. Respond ONLY with this JSON (no other text):
 For technical questions set star_breakdown values to "N/A".
 Question ${questionNumber} of 5.${questionNumber === 5 ? ' LAST question — set next_question to "".' : ''}`
 
-  // Only send last 6 messages — prevents slowdown on Q4-Q5
   const recentHistory = conversationHistory.slice(-6)
   const messages = [...recentHistory, { role: 'user', content: userAnswer }]
 
   const raw = await callClaude({ system, messages, maxTokens: 800, model: HAIKU })
 
   try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON found')
-    return JSON.parse(jsonMatch[0])
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) throw new Error('No JSON found')
+    return JSON.parse(match[0])
   } catch {
     const retry = await callClaude({
       system,
-      messages: [
-        ...messages,
-        { role: 'assistant', content: raw },
-        { role: 'user', content: 'Respond with only the JSON object.' },
-      ],
+      messages: [...messages, { role: 'assistant', content: raw }, { role: 'user', content: 'Respond with only the JSON object.' }],
       maxTokens: 800,
       model: HAIKU,
     })
     try {
-      const jsonMatch = retry.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('No JSON on retry')
-      return JSON.parse(jsonMatch[0])
+      const match = retry.match(/\{[\s\S]*\}/)
+      if (!match) throw new Error('No JSON on retry')
+      return JSON.parse(match[0])
     } catch {
-      return {
-        score: 5,
-        good: 'Answer received.',
-        missing: 'Could not parse feedback.',
-        ideal: '',
-        star_breakdown: { situation: 'N/A', task: 'N/A', action: 'N/A', result: 'N/A' },
-        next_question: '',
-      }
+      return { score: 5, good: 'Answer received.', missing: 'Could not parse feedback.', ideal: '', star_breakdown: { situation: 'N/A', task: 'N/A', action: 'N/A', result: 'N/A' }, next_question: '' }
     }
   }
 }
 
-// ── generateReport — sonnet for quality ──────────────────────────────────────
+// ── generateReport ────────────────────────────────────────────────────────────
 export async function generateReport({ conversationHistory, role, interviewType }) {
   const system = `You are an interviewer. Generate a final interview report.
 Respond ONLY with this JSON (no other text):
@@ -167,17 +124,13 @@ Respond ONLY with this JSON (no other text):
 Verdict: >= 8 = "Ready", >= 6 = "Almost Ready", < 6 = "Needs Work"
 Role: ${role}, Type: ${interviewType}`
 
-  const messages = [
-    ...conversationHistory,
-    { role: 'user', content: 'Interview complete. Generate the final report.' },
-  ]
-
+  const messages = [...conversationHistory, { role: 'user', content: 'Interview complete. Generate the final report.' }]
   const raw = await callClaude({ system, messages, maxTokens: 1024, model: SONNET })
 
   try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON found')
-    return JSON.parse(jsonMatch[0])
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) throw new Error('No JSON found')
+    return JSON.parse(match[0])
   } catch {
     return { overallScore: 6, verdict: 'Almost Ready', strengths: [], improvements: [], top_advice: '', weak_areas: [] }
   }

@@ -3,6 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import ErrorMessage from '../components/ErrorMessage'
 import Spinner from '../components/Spinner'
+import { checkRateLimit } from '../lib/rateLimiter'
+import { validators } from '../utils/validators'
+import { getErrorMessage } from '../utils/errorHandler'
 
 // ── Left brand panel (desktop only) ──────────────────────────
 function BrandPanel() {
@@ -104,26 +107,33 @@ export default function Auth() {
     e.preventDefault()
     setError('')
 
-    if (mode === 'signup' && name.trim().length < 2) {
-      setError('Please enter your full name.')
-      return
-    }
-    if (mode === 'signup' && password.length < 6) {
-      setError('Password must be at least 6 characters.')
-      return
+    // Client-side rate limiting
+    const rl = checkRateLimit(email, 'auth_attempts')
+    if (!rl.allowed) { setError(rl.message); return }
+
+    // Validate inputs
+    const emailErr = validators.email(email)
+    if (emailErr) { setError(emailErr); return }
+
+    const passErr = validators.password(password)
+    if (passErr) { setError(passErr); return }
+
+    if (mode === 'signup') {
+      const nameErr = validators.name(name)
+      if (nameErr) { setError(nameErr); return }
     }
 
     setLoading(true)
     try {
       if (mode === 'signup') {
-        await signUp(name.trim(), email, password)
+        await signUp(validators.sanitize(name), email, password)
         setSignupEmail(email)
         setSignupDone(true)
       } else {
         await signIn(email, password)
       }
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err))
     } finally {
       setLoading(false)
     }
