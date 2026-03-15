@@ -1,0 +1,20 @@
+{
+  "name": "InterviewIQ — AI Mock Interviews",
+  "short_name": "InterviewIQ",
+  "description": "AI-powered mock interviews with resume-aware questions for Indian job seekers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "en-IN"
+}

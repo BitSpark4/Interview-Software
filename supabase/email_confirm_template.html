@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify your InterviewIQ account</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0a0f;font-family:'Helvetica Neue',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0f;padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+
+          <!-- Logo -->
+          <tr>
+            <td style="padding-bottom:32px;">
+              <span style="font-family:monospace;font-weight:700;font-size:18px;color:#10b981;letter-spacing:-0.03em;">
+                InterviewIQ
+              </span>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#111118;border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:40px 36px;">
+
+              <!-- Heading -->
+              <p style="margin:0 0 8px;font-family:monospace;font-weight:700;font-size:22px;color:#f0f0f0;line-height:1.3;">
+                Verify your email address
+              </p>
+              <p style="margin:0 0 28px;font-size:15px;color:#737373;line-height:1.6;">
+                Hi {{ .Data.name | default "there" }},
+                <br><br>
+                Thanks for signing up for <strong style="color:#f0f0f0;">InterviewIQ</strong> — AI-powered mock interviews built for Indian job seekers.
+                <br><br>
+                Please verify your email address to activate your account and start practicing.
+              </p>
+
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
+                <tr>
+                  <td style="background:#10b981;border-radius:8px;">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;padding:14px 32px;font-family:monospace;font-weight:700;font-size:15px;color:#0a0a0f;text-decoration:none;border-radius:8px;letter-spacing:-0.01em;">
+                      Verify my email →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- What happens next -->
+              <table cellpadding="0" cellspacing="0" style="background:rgba(16,185,129,0.05);border:1px solid rgba(16,185,129,0.15);border-radius:8px;padding:16px 20px;margin-bottom:24px;width:100%;">
+                <tr>
+                  <td>
+                    <p style="margin:0 0 10px;font-size:12px;color:#10b981;font-family:monospace;text-transform:uppercase;letter-spacing:0.08em;">
+                      After verification you get:
+                    </p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#a3a3a3;">✓ &nbsp;3 free mock interviews every month</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#a3a3a3;">✓ &nbsp;AI scoring on every answer</p>
+                    <p style="margin:0 0 6px;font-size:14px;color:#a3a3a3;">✓ &nbsp;STAR method coaching</p>
+                    <p style="margin:0;font-size:14px;color:#a3a3a3;">✓ &nbsp;India job market focused questions</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback link -->
+              <p style="margin:0 0 6px;font-size:12px;color:#525252;">
+                Button not working? Copy and paste this link into your browser:
+              </p>
+              <p style="margin:0;font-size:11px;color:#10b981;word-break:break-all;font-family:monospace;">
+                {{ .ConfirmationURL }}
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding-top:24px;">
+              <p style="margin:0 0 4px;font-size:12px;color:#3a3a3a;text-align:center;">
+                This link expires in <strong style="color:#525252;">24 hours</strong>.
+              </p>
+              <p style="margin:0;font-size:12px;color:#3a3a3a;text-align:center;">
+                If you didn't create an account, you can safely ignore this email.
+              </p>
+              <p style="margin:12px 0 0;font-size:11px;color:#2a2a2a;text-align:center;font-family:monospace;">
+                InterviewIQ — Built for India
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

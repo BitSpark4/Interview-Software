@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#10b981" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="InterviewIQ" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+
+    <!-- SEO -->
+    <title>InterviewIQ — AI Mock Interviews for Indian Job Seekers</title>
+    <meta name="description" content="Practice interviews with AI. Get resume-aware questions, honest scores, and STAR coaching. Free for Indian job seekers targeting TCS, Infosys, startups & product companies." />
+    <meta name="keywords" content="mock interview, AI interview practice, India job interview, TCS interview, Infosys interview, product company interview, STAR method" />
+    <meta name="author" content="InterviewIQ" />
+    <link rel="canonical" href="https://interviewiq.in" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://interviewiq.in" />
+    <meta property="og:title" content="InterviewIQ — AI Mock Interviews for Indian Job Seekers" />
+    <meta property="og:description" content="Practice interviews with AI. Resume-aware questions, STAR coaching, honest scoring. 3 free interviews every month." />
+    <meta property="og:image" content="https://interviewiq.in/og.png" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="InterviewIQ — AI Mock Interviews" />
+    <meta name="twitter:description" content="AI-powered mock interviews built for India. Free to start." />
+    <meta name="twitter:image" content="https://interviewiq.in/og.png" />
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://wtfjwkfxcvsagyxnxapw.supabase.co" />
+    <link rel="preconnect" href="https://api.anthropic.com" />
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {})
+        })
+      }
+    </script>
+  </body>
+</html>
