@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Clock, XCircle, Send, CheckCircle, AlertCircle,
-  Lightbulb, MessageSquare, Loader2,
+  Lightbulb, MessageSquare, Loader2, Mic,
 } from 'lucide-react'
 import { useInterview } from '../hooks/useInterview'
 import Spinner from '../components/Spinner'
@@ -21,6 +21,131 @@ function useTimer() {
   return `${m}:${s}`
 }
 
+/** Circular score ring (SVG) */
+function ScoreRing({ score }) {
+  const r = 28
+  const circ = 2 * Math.PI * r
+  const filled = (score / 10) * circ
+
+  const color = score >= 8 ? '#22C55E' : score >= 6 ? '#F59E0B' : '#EF4444'
+
+  return (
+    <div className="relative flex items-center justify-center shrink-0" style={{ width: 72, height: 72 }}>
+      <svg width="72" height="72" viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="36" cy="36" r={r} fill="none" stroke="#1F2937" strokeWidth="5" />
+        <circle
+          cx="36" cy="36" r={r} fill="none"
+          stroke={color} strokeWidth="5"
+          strokeDasharray={`${filled} ${circ}`}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dasharray 0.8s ease' }}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center leading-none">
+        <span className="font-mono font-bold text-xl" style={{ color }}>{score}</span>
+        <span className="text-gray-600 text-[10px] font-mono">/10</span>
+      </div>
+    </div>
+  )
+}
+
+/** Question progress stepper — wired to questionNumber (1-5) */
+function SessionProgress({ questionNumber, totalQuestions = 5, hasAnsweredCurrent }) {
+  return (
+    <div
+      className="shrink-0 px-4 md:px-6"
+      style={{
+        background: '#0B1120',
+        borderBottom: '1px solid #1a2235',
+        paddingTop: 12,
+        paddingBottom: 12,
+      }}
+    >
+      <div className="flex items-start gap-2">
+        {Array.from({ length: totalQuestions }, (_, i) => {
+          const step = i + 1
+          const isCompleted = step < questionNumber
+          const isActive = step === questionNumber
+          const isUpcoming = step > questionNumber
+
+          return (
+            <div key={step} className="flex flex-col gap-1.5 flex-1">
+              {/* Bar */}
+              <div
+                className="h-[3px] w-full rounded-full overflow-hidden"
+                style={{ background: '#1a2235' }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: isCompleted ? '100%' : isActive ? (hasAnsweredCurrent ? '100%' : '50%') : '0%',
+                    background: isCompleted
+                      ? '#22C55E'
+                      : isActive
+                      ? 'linear-gradient(90deg, #22C55E 0%, #86EFAC 100%)'
+                      : 'transparent',
+                    boxShadow: isActive && !hasAnsweredCurrent ? '0 0 6px rgba(34,197,94,0.5)' : 'none',
+                  }}
+                />
+              </div>
+
+              {/* Label row */}
+              <div className="flex items-center gap-1">
+                {/* Circle indicator */}
+                <div
+                  className="flex items-center justify-center shrink-0 rounded-full transition-all duration-300"
+                  style={{
+                    width: 16,
+                    height: 16,
+                    background: isCompleted ? '#22C55E' : isActive ? 'rgba(34,197,94,0.15)' : 'transparent',
+                    border: isCompleted ? 'none' : isActive ? '1.5px solid #22C55E' : '1.5px solid #1F2937',
+                  }}
+                >
+                  {isCompleted ? (
+                    <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                      <path d="M1.5 4L3 5.5L6.5 2" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <span
+                      className="font-mono font-bold"
+                      style={{ fontSize: 8, color: isActive ? '#22C55E' : '#374151' }}
+                    >
+                      {step}
+                    </span>
+                  )}
+                </div>
+
+                {/* Label — hidden on mobile for steps > 1 to save space */}
+                <span
+                  className={`font-mono text-[10px] transition-colors duration-300 ${step > 1 ? 'hidden sm:block' : ''}`}
+                  style={{
+                    color: isCompleted ? '#22C55E' : isActive ? '#E2E8F0' : '#374151',
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  Q{step}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Auto-resize textarea hook */
+function useAutoResize(value) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`
+  }, [value])
+  return ref
+}
+
 export default function InterviewSession() {
   const navigate  = useNavigate()
   const [params]  = useSearchParams()
@@ -37,9 +162,7 @@ export default function InterviewSession() {
   const [showExit, setShowExit]     = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [initLoading, setInitLoading] = useState(true)
-  const [currentFeedback, setCurrentFeedback] = useState(null) // feedback for current Q
-  const [feedbackQ, setFeedbackQ]   = useState(null)           // which Q this feedback is for
-  const textareaRef = useRef(null)
+  const textareaRef = useAutoResize(input)
 
   useEffect(() => {
     if (!sessionId) { navigate('/dashboard'); return }
@@ -57,7 +180,6 @@ export default function InterviewSession() {
     if (isComplete) navigate(`/report/${sessionId}`, { replace: true })
   }, [isComplete])
 
-  // Current question is the last AI message that is_question
   const currentQuestion = [...messages].reverse().find(m => m.is_question)
 
   async function handleSubmit(e) {
@@ -68,15 +190,10 @@ export default function InterviewSession() {
     const answer = validators.sanitize(input)
     setInput('')
     setError('')
-    setCurrentFeedback(null)
     setLoading(true)
-
     try {
       const result = await sendAnswer(answer)
-      // After sendAnswer, get the feedback from the last AI non-question message
-      if (result.isComplete) {
-        setGeneratingReport(true)
-      }
+      if (result.isComplete) setGeneratingReport(true)
     } catch (err) {
       setError(err.message || 'Failed to get response. Please try again.')
     } finally {
@@ -88,18 +205,16 @@ export default function InterviewSession() {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSubmit() }
   }
 
-  // Find last feedback from messages
   const lastFeedbackMsg = [...messages].reverse().find(m => m.sender === 'ai' && !m.is_question && m.feedback)
   const latestFeedback  = lastFeedbackMsg?.feedback
   const hasAnsweredCurrentQ = messages.some(m => m.sender === 'user' && m.question_num === currentQuestion?.question_num)
 
-  // Loading skeleton
   if (initLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
         <div className="text-center space-y-3">
           <Spinner size={28} color="border-emerald-500" />
-          <p className="text-gray-500 text-sm">Loading your interview…</p>
+          <p className="text-gray-500 text-sm font-mono">Preparing your interview…</p>
         </div>
       </div>
     )
@@ -109,135 +224,201 @@ export default function InterviewSession() {
   const typeLabel = sessionData?.interviewType || ''
 
   return (
-    <div className="bg-[#0a0a0f]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="bg-[#080C14]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-      {/* ── Top bar ──────────────────────────────────────── */}
-      <header className="shrink-0 h-14 bg-gray-950 border-b border-gray-800 flex items-center justify-between px-4 md:px-6 z-10">
-        <span className="text-xs bg-gray-800 text-gray-400 px-3 py-1.5 rounded-full font-mono truncate max-w-36 capitalize">
-          {roleLabel} · {typeLabel}
-        </span>
+      {/* ── Top bar ──────────────────────────────────────────── */}
+      <header
+        className="shrink-0 flex items-center justify-between px-4 md:px-6 z-10"
+        style={{ height: 56, background: '#0F172A', borderBottom: '1px solid #1a2235' }}
+      >
+        {/* Session label */}
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-xs font-mono text-gray-400 capitalize truncate max-w-[140px] sm:max-w-none">
+            {roleLabel} · <span className="text-gray-500">{typeLabel}</span>
+          </span>
+        </div>
 
-        {/* Progress dots */}
-        <div className="flex items-center gap-1.5">
+        {/* Progress pips */}
+        <div className="flex items-center gap-1">
           {[1, 2, 3, 4, 5].map(n => (
             <div
               key={n}
-              className={`w-2 h-2 rounded-full transition-colors ${
-                n < questionNumber ? 'bg-emerald-500'
-                : n === questionNumber ? 'bg-emerald-500/60'
-                : 'bg-gray-700'
-              }`}
+              style={{
+                width: n === questionNumber ? 20 : 6,
+                height: 6,
+                borderRadius: 3,
+                background:
+                  n < questionNumber  ? '#22C55E' :
+                  n === questionNumber ? '#22C55E' :
+                  '#1F2937',
+                opacity: n === questionNumber ? 1 : n < questionNumber ? 0.7 : 1,
+                transition: 'width 0.3s ease, background 0.3s ease',
+              }}
             />
           ))}
-          <span className="text-gray-500 text-xs ml-1 font-mono">Q{questionNumber}/5</span>
+          <span className="text-gray-600 text-xs font-mono ml-2">
+            {questionNumber}<span className="text-gray-700">/5</span>
+          </span>
         </div>
 
+        {/* Timer + Exit */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-gray-500 text-xs font-mono">
-            <Clock size={13} />
+          <div className="flex items-center gap-1.5 font-mono text-xs"
+            style={{ color: '#4B5563', background: '#111827', padding: '4px 10px', borderRadius: 6 }}>
+            <Clock size={12} />
             {timer}
           </div>
           <button
             type="button"
             onClick={() => setShowExit(true)}
-            className="flex items-center gap-1 text-gray-500 hover:text-red-400 text-sm transition-colors"
+            className="flex items-center gap-1 text-gray-600 hover:text-red-400 text-xs transition-colors"
           >
-            <XCircle size={16} />
+            <XCircle size={15} />
             <span className="hidden sm:inline">Exit</span>
           </button>
         </div>
       </header>
 
-      {/* ── Two-panel body ───────────────────────────────── */}
+      {/* ── Question stepper ─────────────────────────────────── */}
+      <SessionProgress
+        questionNumber={questionNumber}
+        totalQuestions={5}
+        hasAnsweredCurrent={hasAnsweredCurrentQ}
+      />
+
+      {/* ── Two-panel body ───────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
 
         {/* Left panel — Question + Feedback */}
-        <div className="w-full md:w-[38%] border-r border-gray-800 flex flex-col overflow-y-auto bg-gray-950">
-          <div className="p-5 flex-1">
+        <div
+          className="w-full md:w-[40%] flex flex-col overflow-y-auto"
+          style={{ background: '#0B1120', borderRight: '1px solid #1a2235' }}
+        >
+          <div className="p-6 flex-1 space-y-5">
 
-            {/* Question number badge */}
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-xs font-mono font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                <MessageSquare size={11} /> Question {questionNumber}
+            {/* Question badge */}
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#4ADE80' }}
+              >
+                <MessageSquare size={10} />
+                Question {questionNumber} of 5
               </span>
             </div>
 
             {/* Question text */}
-            {loading && !currentQuestion ? (
-              <div className="flex items-center gap-2 py-4">
-                <Loader2 size={16} className="text-emerald-500 animate-spin" />
-                <span className="text-gray-500 text-sm">AI is thinking…</span>
-              </div>
-            ) : currentQuestion ? (
-              <p className="text-white text-base md:text-lg leading-relaxed font-medium">
-                {currentQuestion.content}
-              </p>
-            ) : (
-              <div className="flex items-center gap-2 py-4">
-                <Loader2 size={16} className="text-emerald-500 animate-spin" />
-                <span className="text-gray-500 text-sm">Loading question…</span>
-              </div>
-            )}
+            <div>
+              {loading && !currentQuestion ? (
+                <div className="flex items-center gap-2.5 py-2">
+                  <Loader2 size={15} className="text-emerald-500 animate-spin shrink-0" />
+                  <span className="text-gray-500 text-sm">Generating question…</span>
+                </div>
+              ) : currentQuestion ? (
+                <p
+                  className="leading-relaxed font-medium"
+                  style={{ fontSize: 17, color: '#E2E8F0', letterSpacing: '-0.01em', lineHeight: 1.65 }}
+                >
+                  {currentQuestion.content}
+                </p>
+              ) : (
+                <div className="flex items-center gap-2.5 py-2">
+                  <Loader2 size={15} className="text-emerald-500 animate-spin shrink-0" />
+                  <span className="text-gray-500 text-sm">Loading question…</span>
+                </div>
+              )}
+              {streamError && (
+                <p className="text-red-400 text-sm mt-3">{streamError}</p>
+              )}
+            </div>
 
-            {streamError && <p className="text-red-400 text-sm mt-3">{streamError}</p>}
-
-            {/* Hint card — shown before answering */}
+            {/* Tip — shown before answering */}
             {currentQuestion && !hasAnsweredCurrentQ && !loading && (
-              <div className="mt-6 bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-                <p className="text-blue-400 text-xs font-medium flex items-center gap-1.5 mb-1.5">
-                  <Lightbulb size={13} /> Tip
+              <div
+                className="rounded-xl p-4"
+                style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.15)' }}
+              >
+                <p
+                  className="text-xs font-semibold flex items-center gap-1.5 mb-2"
+                  style={{ color: '#60A5FA' }}
+                >
+                  <Lightbulb size={12} /> Tip
                 </p>
-                <p className="text-gray-400 text-xs leading-relaxed">
+                <p className="text-gray-400 text-sm leading-relaxed">
                   {sessionData?.interviewType === 'behavioral'
-                    ? 'Use the STAR method: Situation → Task → Action → Result'
+                    ? 'Use the STAR method: Situation → Task → Action → Result. Quantify your results.'
                     : sessionData?.interviewType === 'technical'
-                    ? 'Think out loud. Explain your reasoning before giving the answer.'
-                    : 'Be specific and use real examples where possible.'}
+                    ? 'Think out loud. Explain your reasoning before diving into the answer.'
+                    : 'Be specific and back up claims with concrete examples from past experience.'}
                 </p>
               </div>
             )}
 
-            {/* Feedback panel — shown after answering */}
+            {/* Feedback — shown after answering */}
             {hasAnsweredCurrentQ && latestFeedback && latestFeedback.score != null && (
-              <div className="mt-6 space-y-4">
-                {/* Score ring */}
-                <div className="flex items-center gap-3 p-4 bg-gray-900 border border-gray-800 rounded-xl">
-                  <div className={`text-3xl font-bold font-mono ${scoreColor(latestFeedback.score)}`}>
-                    {latestFeedback.score}<span className="text-gray-600 text-base font-normal">/10</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500 rounded-full transition-all duration-700"
-                        style={{ width: `${(latestFeedback.score / 10) * 100}%` }} />
+              <div className="space-y-4">
+                {/* Score */}
+                <div
+                  className="flex items-center gap-4 rounded-xl p-4"
+                  style={{ background: '#111827', border: '1px solid #1F2937' }}
+                >
+                  <ScoreRing score={latestFeedback.score} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-sm mb-1">Answer Score</p>
+                    <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#1F2937' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{
+                          width: `${(latestFeedback.score / 10) * 100}%`,
+                          background: latestFeedback.score >= 8
+                            ? 'linear-gradient(90deg, #22C55E, #86EFAC)'
+                            : latestFeedback.score >= 6
+                            ? 'linear-gradient(90deg, #F59E0B, #FCD34D)'
+                            : 'linear-gradient(90deg, #EF4444, #FCA5A5)',
+                        }}
+                      />
                     </div>
+                    <p className="text-gray-600 text-xs mt-1.5 font-mono">
+                      {latestFeedback.score >= 8 ? 'Excellent' : latestFeedback.score >= 6 ? 'Good' : latestFeedback.score >= 4 ? 'Needs work' : 'Keep practicing'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Good */}
+                {/* What went well */}
                 {latestFeedback.good && (
-                  <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
-                    <p className="text-emerald-400 text-xs font-medium flex items-center gap-1.5 mb-1.5">
-                      <CheckCircle size={13} /> What went well
+                  <div
+                    className="rounded-xl p-4"
+                    style={{ background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.18)' }}
+                  >
+                    <p className="text-xs font-semibold flex items-center gap-1.5 mb-2" style={{ color: '#4ADE80' }}>
+                      <CheckCircle size={12} /> What went well
                     </p>
                     <p className="text-gray-300 text-sm leading-relaxed">{latestFeedback.good}</p>
                   </div>
                 )}
 
-                {/* Missing */}
+                {/* What was missing */}
                 {latestFeedback.missing && (
-                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-                    <p className="text-red-400 text-xs font-medium flex items-center gap-1.5 mb-1.5">
-                      <AlertCircle size={13} /> What was missing
+                  <div
+                    className="rounded-xl p-4"
+                    style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.18)' }}
+                  >
+                    <p className="text-xs font-semibold flex items-center gap-1.5 mb-2" style={{ color: '#F87171' }}>
+                      <AlertCircle size={12} /> What was missing
                     </p>
                     <p className="text-gray-300 text-sm leading-relaxed">{latestFeedback.missing}</p>
                   </div>
                 )}
 
-                {/* Ideal */}
+                {/* Ideal answer */}
                 {latestFeedback.ideal && (
-                  <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
-                    <p className="text-blue-400 text-xs font-medium flex items-center gap-1.5 mb-1.5">
-                      <Lightbulb size={13} /> Ideal answer
+                  <div
+                    className="rounded-xl p-4"
+                    style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.18)' }}
+                  >
+                    <p className="text-xs font-semibold flex items-center gap-1.5 mb-2" style={{ color: '#60A5FA' }}>
+                      <Lightbulb size={12} /> Ideal answer
                     </p>
                     <p className="text-gray-300 text-sm leading-relaxed">{latestFeedback.ideal}</p>
                   </div>
@@ -250,55 +431,113 @@ export default function InterviewSession() {
               </div>
             )}
 
-            {/* AI evaluating indicator */}
+            {/* Evaluating indicator */}
             {loading && hasAnsweredCurrentQ && !generatingReport && (
-              <div className="mt-6 flex items-center gap-2 text-gray-500 text-sm">
-                <Loader2 size={16} className="animate-spin text-emerald-500" />
-                AI is evaluating your answer…
+              <div className="flex items-center gap-2.5 py-3 text-sm text-gray-500">
+                <Loader2 size={15} className="animate-spin text-emerald-500 shrink-0" />
+                <span>AI is evaluating your answer…</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Right panel — Answer input */}
-        <div className="hidden md:flex flex-col flex-1 overflow-hidden">
+        <div className="hidden md:flex flex-col flex-1 overflow-hidden" style={{ background: '#080C14' }}>
           {generatingReport ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8">
-              <Loader2 size={32} className="text-emerald-500 animate-spin" />
-              <p className="text-white font-medium">Generating your interview report…</p>
-              <p className="text-gray-500 text-sm">Analyzing all 5 answers</p>
-              <div className="w-64 h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full animate-[progress_4s_ease-in-out_forwards]" style={{ width: '85%' }} />
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8">
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center"
+                style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}
+              >
+                <Loader2 size={28} className="text-emerald-500 animate-spin" />
               </div>
+              <div className="text-center">
+                <p className="text-white font-semibold text-lg mb-1">Generating your report…</p>
+                <p className="text-gray-500 text-sm">Analyzing all 5 answers</p>
+              </div>
+              <div className="w-56 h-1 rounded-full overflow-hidden" style={{ background: '#1F2937' }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    background: 'linear-gradient(90deg, #22C55E, #86EFAC)',
+                    animation: 'progfill 4s ease-in-out forwards',
+                    width: '85%',
+                  }}
+                />
+              </div>
+              <style>{`@keyframes progfill { from { width: 10%; } to { width: 85%; } }`}</style>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col h-full p-6">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-gray-400 text-sm font-medium">Your Answer</p>
-                <span className="text-gray-600 text-xs font-mono">{input.length} chars</span>
+            <form onSubmit={handleSubmit} className="flex flex-col h-full p-6 gap-4">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-semibold text-sm">Your Answer</p>
+                  <p className="text-gray-600 text-xs mt-0.5">Ctrl+Enter to submit</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="font-mono text-xs px-2 py-1 rounded"
+                    style={{
+                      background: '#111827',
+                      color: input.length > 50 ? '#4ADE80' : '#4B5563',
+                      transition: 'color 0.3s',
+                    }}
+                  >
+                    {input.length} chars
+                  </span>
+                </div>
               </div>
 
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type your answer here…&#10;&#10;Be specific. Use examples. Think out loud."
-                disabled={loading || hasAnsweredCurrentQ}
-                className="flex-1 bg-gray-900 border border-gray-800 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 text-white rounded-xl px-5 py-4 text-sm outline-none transition-colors resize-none disabled:opacity-50 leading-relaxed"
-              />
+              {/* Textarea */}
+              <div
+                className="relative flex-1 rounded-xl overflow-hidden transition-all duration-200"
+                style={{
+                  border: `1px solid ${input.length > 0 ? 'rgba(34,197,94,0.3)' : '#1E2D45'}`,
+                  background: '#0B1120',
+                  boxShadow: input.length > 0 ? '0 0 0 3px rgba(34,197,94,0.05)' : 'none',
+                }}
+              >
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Type your answer here…\n\nBe specific. Use real examples. Think out loud.`}
+                  disabled={loading || hasAnsweredCurrentQ}
+                  className="w-full h-full min-h-[200px] bg-transparent text-gray-100 px-5 py-4 text-sm outline-none resize-none disabled:opacity-50 leading-relaxed placeholder-gray-700"
+                  style={{ fontFamily: 'inherit' }}
+                />
+              </div>
 
-              {error && <p className="text-red-400 text-xs mt-2">{error}</p>}
+              {error && (
+                <p className="text-red-400 text-xs flex items-center gap-1.5">
+                  <AlertCircle size={12} /> {error}
+                </p>
+              )}
 
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-gray-700 text-xs">Ctrl+Enter to submit</p>
+              {/* Submit */}
+              <div className="flex items-center justify-end">
                 <button
                   type="submit"
                   disabled={loading || !input.trim() || hasAnsweredCurrentQ}
-                  className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold px-6 py-3 rounded-xl transition-colors"
+                  className="flex items-center gap-2 font-bold text-sm px-6 py-3 rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: loading || !input.trim() || hasAnsweredCurrentQ
+                      ? '#1A2A1A'
+                      : '#22C55E',
+                    color: loading || !input.trim() || hasAnsweredCurrentQ ? '#2D4A2D' : '#000',
+                    boxShadow: !loading && input.trim() && !hasAnsweredCurrentQ
+                      ? '0 4px 16px rgba(34,197,94,0.25)'
+                      : 'none',
+                  }}
                 >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                  {loading ? 'Evaluating…' : 'Submit Answer'}
+                  {loading ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : (
+                    <Send size={15} />
+                  )}
+                  {loading ? 'Evaluating…' : hasAnsweredCurrentQ ? 'Answered' : 'Submit Answer'}
                 </button>
               </div>
             </form>
@@ -306,16 +545,19 @@ export default function InterviewSession() {
         </div>
       </div>
 
-      {/* Mobile answer area — shown below question panel on mobile */}
-      <div className="md:hidden shrink-0 bg-gray-950 border-t border-gray-800 px-4 py-3">
+      {/* Mobile answer area */}
+      <div
+        className="md:hidden shrink-0 px-4 py-3"
+        style={{ background: '#0F172A', borderTop: '1px solid #1a2235' }}
+      >
         {generatingReport ? (
           <div className="flex items-center justify-center gap-2 py-2">
-            <Loader2 size={16} className="text-emerald-500 animate-spin" />
+            <Loader2 size={15} className="text-emerald-500 animate-spin" />
             <p className="text-gray-400 text-sm">Generating report…</p>
           </div>
         ) : (
           <>
-            {error && <p className="text-red-400 text-xs mb-2">{error}</p>}
+            {error && <p className="text-red-400 text-xs mb-2 flex items-center gap-1"><AlertCircle size={11} /> {error}</p>}
             <form onSubmit={handleSubmit} className="flex gap-2 items-end">
               <textarea
                 value={input}
@@ -324,14 +566,16 @@ export default function InterviewSession() {
                 placeholder="Type your answer…"
                 disabled={loading || hasAnsweredCurrentQ}
                 rows={3}
-                className="flex-1 bg-gray-800 border border-gray-700 focus:border-emerald-500 text-white rounded-lg px-3 py-2.5 text-sm outline-none transition-colors resize-none disabled:opacity-50"
+                className="flex-1 text-white text-sm px-3 py-2.5 outline-none resize-none disabled:opacity-50 rounded-xl leading-relaxed placeholder-gray-700"
+                style={{ background: '#111827', border: '1px solid #1E2D45', fontFamily: 'inherit' }}
               />
               <button
                 type="submit"
                 disabled={loading || !input.trim() || hasAnsweredCurrentQ}
-                className="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-bold p-3 rounded-lg transition-colors shrink-0"
+                className="flex items-center justify-center text-black font-bold p-3 rounded-xl transition-colors shrink-0 disabled:opacity-40"
+                style={{ background: '#22C55E', minWidth: 44 }}
               >
-                {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
               </button>
             </form>
           </>
@@ -340,22 +584,24 @@ export default function InterviewSession() {
 
       {/* Exit dialog */}
       {showExit && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-20 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 max-w-sm w-full">
-            <h3 className="font-mono font-bold text-white mb-2">Exit interview?</h3>
-            <p className="text-gray-400 text-sm mb-6">Your progress will be saved and you can resume later.</p>
+        <div className="fixed inset-0 z-20 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.75)' }}>
+          <div className="rounded-2xl p-6 max-w-sm w-full" style={{ background: '#0F172A', border: '1px solid #1E2D45' }}>
+            <h3 className="font-mono font-bold text-white text-base mb-2">Exit interview?</h3>
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">Your progress will be saved and you can resume later from the dashboard.</p>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowExit(false)}
-                className="flex-1 border border-gray-700 text-gray-300 hover:text-white py-3 rounded-lg text-sm transition-colors"
+                className="flex-1 text-gray-300 hover:text-white py-3 rounded-xl text-sm transition-colors"
+                style={{ border: '1px solid #1E2D45' }}
               >
-                Continue Interview
+                Continue
               </button>
               <button
                 type="button"
                 onClick={() => navigate('/dashboard')}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-lg text-sm transition-colors"
+                className="flex-1 text-white py-3 rounded-xl text-sm transition-colors"
+                style={{ background: '#1F2937', border: '1px solid #374151' }}
               >
                 Exit and save
               </button>

@@ -109,8 +109,16 @@ export function AuthProvider({ children }) {
   }
 
   async function signIn(email, password) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw new Error('Invalid email or password. Please try again.')
+    // Set user immediately so ProtectedRoute doesn't redirect back to /auth
+    // before onAuthStateChange fires. onAuthStateChange will also fire shortly
+    // after and is a no-op because user id matches lastFetchedUserId.
+    if (data?.user) {
+      setUser(data.user)
+      lastFetchedUserId.current = data.user.id
+      fetchProfile(data.user.id)
+    }
     navigate('/dashboard')
   }
 

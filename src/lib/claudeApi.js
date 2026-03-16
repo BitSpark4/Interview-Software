@@ -1,7 +1,10 @@
 // All Claude calls go through /.netlify/functions/claude-proxy — key stays server-side.
 // Use `netlify dev` locally (port 8888) so functions run alongside the frontend.
 
-const PROXY_URL = '/.netlify/functions/claude-proxy'
+const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const PROXY_URL = isLocalDev
+  ? 'http://localhost:8888/.netlify/functions/claude-proxy'
+  : '/.netlify/functions/claude-proxy'
 
 const HAIKU  = 'claude-haiku-4-5-20251001'
 const SONNET = 'claude-sonnet-4-6'

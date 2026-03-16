@@ -4,6 +4,7 @@ import AppLayout from '../components/AppLayout'
 import RoleCard from '../components/RoleCard'
 import Spinner from '../components/Spinner'
 import ErrorMessage from '../components/ErrorMessage'
+import InterviewStepper from '../components/InterviewStepper'
 import { useInterview } from '../hooks/useInterview'
 import { useResume } from '../hooks/useResume'
 import { useAuth } from '../hooks/useAuth'
@@ -109,20 +110,15 @@ export default function InterviewSetup() {
         <p className="text-gray-500 text-sm mb-6">Takes 30 seconds</p>
 
         {/* Step indicator */}
-        <div className="flex items-center gap-2 mb-8">
-          {[1, 2, 3, 4].map(s => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-mono font-bold transition-colors ${
-                s === step ? 'bg-emerald-500 text-black'
-                : s < step  ? 'bg-emerald-500/30 text-emerald-400'
-                : 'bg-gray-800 text-gray-600'
-              }`}>
-                {s < step ? '✓' : s}
-              </div>
-              {s < 4 && <div className={`h-px w-6 ${s < step ? 'bg-emerald-500/50' : 'bg-gray-800'}`} />}
-            </div>
-          ))}
-        </div>
+        <InterviewStepper
+          currentStep={step}
+          steps={[
+            { label: 'Role' },
+            { label: 'Interview Type' },
+            { label: 'Company' },
+            { label: 'Resume' },
+          ]}
+        />
 
         {/* Step 1: Role */}
         {step === 1 && (

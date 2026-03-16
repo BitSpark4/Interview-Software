@@ -49,26 +49,38 @@ function SkeletonCard() {
 export default function Admin() {
   const [data, setData]         = useState(null)
   const [loading, setLoading]   = useState(true)
+  const [fetchError, setFetchError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [page, setPage]         = useState(0)
   const PAGE_SIZE = 20
 
+  const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
   const fetchStats = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
-      const res = await fetch('/.netlify/functions/admin-stats', {
+
+      // Use netlify dev port 8888 in local dev, relative path in production
+      const fnUrl = isLocalDev
+        ? `http://localhost:8888/.netlify/functions/admin-stats`
+        : '/.netlify/functions/admin-stats'
+
+      const res = await fetch(fnUrl, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) throw new Error(`Server returned ${res.status}`)
       const json = await res.json()
       setData(json)
       setLastUpdated(new Date())
-    } catch { /* ignore */ } finally {
+    } catch (err) {
+      setFetchError(err.message || 'Failed to load stats')
+    } finally {
       setLoading(false)
     }
-  }, [])
+  }, [isLocalDev])
 
   useEffect(() => {
     fetchStats()
@@ -118,6 +130,24 @@ export default function Admin() {
             </button>
           </div>
         </div>
+
+        {/* Local dev / fetch error banner */}
+        {fetchError && (
+          <div style={{
+            marginBottom: 24, padding: '14px 18px', borderRadius: 10,
+            background: isLocalDev ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+            border: `1px solid ${isLocalDev ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)'}`,
+          }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: isLocalDev ? '#F59E0B' : '#EF4444', margin: '0 0 4px 0' }}>
+              {isLocalDev ? '⚠ Local dev: Netlify functions not available' : '⚠ Failed to load stats'}
+            </p>
+            <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>
+              {isLocalDev
+                ? 'Run netlify dev instead of npm run dev to serve functions locally. Error: ' + fetchError
+                : fetchError}
+            </p>
+          </div>
+        )}
 
         {/* Row 1 — 6 stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4" style={{ marginBottom: 24 }}>

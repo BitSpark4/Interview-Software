@@ -5,6 +5,7 @@ import {
   User, BarChart2, Trophy, Flame, Target, Play,
   FileText, Zap, ChevronRight, Upload, Pencil, Trash2,
   Crown, Lock, CheckCircle, AlertCircle, FileSearch, RefreshCw, Settings,
+  Code2, Award,
 } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
@@ -25,26 +26,49 @@ function atsRingColor(v) {
 }
 
 function AtsRing({ score = 0 }) {
-  const r = 40
+  const r = 28
   const circ = 2 * Math.PI * r
   const offset = circ - (score / 100) * circ
   const color = atsRingColor(score)
   return (
-    <svg width={96} height={96} viewBox="0 0 96 96">
-      <circle cx={48} cy={48} r={r} fill="none" stroke="#1F2937" strokeWidth={8} />
+    <svg width={72} height={72} viewBox="0 0 72 72" style={{ flexShrink: 0 }}>
+      <circle cx={36} cy={36} r={r} fill="none" stroke="#1F2937" strokeWidth={6} />
       <circle
-        cx={48} cy={48} r={r} fill="none"
-        stroke={color} strokeWidth={8}
+        cx={36} cy={36} r={r} fill="none"
+        stroke={color} strokeWidth={6}
         strokeDasharray={circ}
         strokeDashoffset={offset}
         strokeLinecap="round"
-        transform="rotate(-90 48 48)"
+        transform="rotate(-90 36 36)"
         style={{ transition: 'stroke-dashoffset 0.6s ease' }}
       />
-      <text x={48} y={44} textAnchor="middle" fill={color} fontSize={18} fontWeight="bold" fontFamily="Inter,sans-serif">{score}</text>
-      <text x={48} y={60} textAnchor="middle" fill="#6B7280" fontSize={10} fontFamily="Inter,sans-serif">ATS</text>
+      <text x={36} y={32} textAnchor="middle" fill={color} fontSize={16} fontWeight="800" fontFamily="Inter,sans-serif">{score}</text>
+      <text x={36} y={46} textAnchor="middle" fill="#6B7280" fontSize={9} fontFamily="Inter,sans-serif">/ 100</text>
     </svg>
   )
+}
+
+function categorizeSkills(skillsList) {
+  const frontendKeywords = ['react','vue','angular','html','css','typescript','javascript','next','tailwind','svelte','sass','scss','redux','graphql','apollo','jquery','bootstrap']
+  const backendKeywords = ['node','python','java','go','ruby','php','express','django','flask','spring','rust','c#','dotnet','nest','fastapi','laravel','rails','kotlin','swift']
+  const toolsKeywords = ['git','docker','kubernetes','aws','gcp','azure','figma','webpack','vite','postgres','mysql','redis','supabase','mongodb','firebase','linux','nginx','jest','cypress','terraform','ansible']
+  const groupStyles = {
+    Frontend:    { dot: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  border: '1px solid rgba(59,130,246,0.25)',  color: '#60A5FA' },
+    Backend:     { dot: '#8B5CF6', bg: 'rgba(139,92,246,0.12)',  border: '1px solid rgba(139,92,246,0.25)',  color: '#A78BFA' },
+    Tools:       { dot: '#6B7280', bg: 'rgba(107,114,128,0.12)', border: '1px solid rgba(107,114,128,0.25)', color: '#9CA3AF' },
+    Methodology: { dot: '#10B981', bg: 'rgba(16,185,129,0.12)',  border: '1px solid rgba(16,185,129,0.25)',  color: '#6EE7B7' },
+  }
+  const groups = { Frontend: [], Backend: [], Tools: [], Methodology: [] }
+  skillsList.forEach(skill => {
+    const n = (skill.name || '').toLowerCase()
+    if (frontendKeywords.some(k => n.includes(k)))    groups.Frontend.push(skill.name)
+    else if (backendKeywords.some(k => n.includes(k))) groups.Backend.push(skill.name)
+    else if (toolsKeywords.some(k => n.includes(k)))   groups.Tools.push(skill.name)
+    else groups.Methodology.push(skill.name)
+  })
+  return Object.entries(groups)
+    .filter(([, items]) => items.length > 0)
+    .map(([cat, items]) => ({ category: cat, items, style: groupStyles[cat] }))
 }
 
 const RANGE_OPTIONS = ['All time', '30 days', '7 days']
@@ -66,6 +90,8 @@ export default function Profile() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteInput, setDeleteInput]       = useState('')
   const [deleting, setDeleting]             = useState(false)
+  const [showAllSkills, setShowAllSkills]   = useState(false)
+  const [showAllTips, setShowAllTips]       = useState(false)
 
   const isPro        = userProfile?.plan === 'pro'
   const skills       = userProfile?.skills
@@ -165,7 +191,7 @@ export default function Profile() {
 
   return (
     <AppLayout>
-      <div className="p-6 md:p-8 space-y-5">
+      <div className="p-4 md:p-6 space-y-4">
 
         {/* ── Row 1: Left profile col + Right 2x2 stats ── */}
         <div className="flex flex-col lg:flex-row gap-5 lg:items-stretch">
@@ -242,7 +268,7 @@ export default function Profile() {
             {stats.map(s => (
               <div
                 key={s.label}
-                className="rounded-xl p-5"
+                className="rounded-xl p-4"
                 style={{
                   background: '#111827',
                   border: '1px solid #1F2937',
@@ -283,7 +309,7 @@ export default function Profile() {
           </div>
 
           {chartData.length >= 2 ? (
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={160}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
                 <XAxis dataKey="date" tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -298,8 +324,8 @@ export default function Profile() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
-              <BarChart2 size={32} color="#374151" />
+            <div className="flex flex-col items-center justify-center py-6 text-center gap-2" style={{ minHeight: 100 }}>
+              <BarChart2 size={28} color="#374151" />
               <p className="text-[13px]" style={{ color: '#6B7280' }}>
                 Complete {Math.max(0, 2 - chartData.length)} more interview{chartData.length < 1 ? 's' : ''} to see your chart
               </p>
@@ -307,79 +333,117 @@ export default function Profile() {
                 to="/interview/setup"
                 className="flex items-center gap-2 font-semibold transition-all duration-200"
                 style={{
-                  background: '#22C55E', color: '#000', fontSize: 13,
-                  padding: '8px 20px', borderRadius: 8, marginTop: 4,
+                  background: '#22C55E', color: '#000', fontSize: 12,
+                  padding: '6px 16px', borderRadius: 8, marginTop: 2,
                 }}
               >
-                <Play size={13} fill="#000" /> Start Interview
+                <Play size={12} fill="#000" /> Start Interview
               </Link>
             </div>
           )}
         </div>
 
-        {/* ── Row 3: Skills (left) + ATS ring (right) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* ── Row 3: Skills (40%) + ATS (60%) combined card ── */}
+        <div
+          className="rounded-xl flex flex-col lg:flex-row"
+          style={{ background: '#111827', border: '1px solid #2D3748' }}
+        >
+          {/* Left 40%: Skills */}
+          <div style={{ padding: 24, width: '100%' }} className="lg:w-[40%]">
+            <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
+              <Code2 size={16} color="#8B5CF6" />
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#F9FAFB' }}>Skills Detected</p>
+            </div>
+            <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>Extracted from your resume</p>
 
-          {/* Skills card — purple left border */}
-          <div
-            className="rounded-xl p-5"
-            style={{ background: '#111827', border: '1px solid #1F2937', borderLeft: '3px solid #8B5CF6' }}
-          >
-            <p className="text-[14px] font-semibold mb-1" style={{ color: '#F9FAFB' }}>Skills Detected</p>
-            <p className="text-[12px] mb-4" style={{ color: '#6B7280' }}>Extracted from your resume</p>
-            {skills?.technical_skills?.length ? (
-              <div className="flex flex-wrap gap-2">
-                {skills.technical_skills.map(s => (
-                  <span
-                    key={s.name}
-                    className="text-[12px] font-medium px-2.5 py-1 rounded-full"
-                    style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
-                  >
-                    {s.name}
-                  </span>
-                ))}
+            {skills?.technical_skills?.length ? (() => {
+              const allSkills = skills.technical_skills
+              const LIMIT = 12
+              const visible = showAllSkills ? allSkills : allSkills.slice(0, LIMIT)
+              const extra = allSkills.length - LIMIT
+              const grouped = categorizeSkills(visible)
+              return (
+                <div>
+                  {grouped.map(({ category, items, style }) => (
+                    <div key={category} style={{ marginBottom: 12 }}>
+                      <div className="flex items-center gap-1.5" style={{ marginBottom: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: style.dot, flexShrink: 0, display: 'inline-block' }} />
+                        <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{category}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {items.map(name => (
+                          <span key={name} style={{ fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 20, height: 24, display: 'inline-flex', alignItems: 'center', background: style.bg, border: style.border, color: style.color }}>
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2" style={{ marginTop: 12 }}>
+                    {!showAllSkills && extra > 0 && (
+                      <button
+                        onClick={() => setShowAllSkills(true)}
+                        style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: '#1F2937', color: '#9CA3AF', border: '1px solid #374151', cursor: 'pointer' }}
+                      >
+                        +{extra} more
+                      </button>
+                    )}
+                    <p style={{ fontSize: 11, color: '#6B7280' }}>{allSkills.length} skills detected</p>
+                  </div>
+                </div>
+              )
+            })() : savedResume ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
+                <Zap size={22} color="#8B5CF6" />
+                <p style={{ fontSize: 13, color: '#6B7280' }}>Skills are being analyzed</p>
+                <button
+                  onClick={() => refreshProfile?.()}
+                  className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg transition-all"
+                  style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
+                >
+                  <RefreshCw size={12} /> Refresh
+                </button>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
-                <p className="text-[13px]" style={{ color: '#6B7280' }}>Upload your resume to detect skills</p>
+              <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
+                <p style={{ fontSize: 13, color: '#6B7280' }}>Upload resume to detect skills</p>
                 <label
                   htmlFor="skills-resume-upload"
-                  className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-4 py-2 rounded-lg transition-all"
+                  className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-3 py-1.5 rounded-lg"
                   style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#8B5CF6'; e.currentTarget.style.color = '#8B5CF6' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#9CA3AF' }}
                 >
-                  <Upload size={13} /> Upload Resume to detect skills
+                  <Upload size={12} /> Upload Resume
                   <input id="skills-resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
                 </label>
               </div>
             )}
           </div>
 
-          {/* ATS Score card */}
-          <div className="rounded-xl p-5 relative overflow-hidden"
-            style={{ background: '#111827', border: '1px solid #1F2937', borderLeft: '3px solid #22C55E' }}>
-            <p className="text-[14px] font-semibold mb-1" style={{ color: '#F9FAFB' }}>Resume ATS Score</p>
-            <p className="text-[12px] mb-4" style={{ color: '#6B7280' }}>How ATS-friendly your resume is</p>
+          {/* Divider */}
+          <div className="hidden lg:block" style={{ width: 1, background: '#1F2937', margin: '16px 0' }} />
+          <div className="block lg:hidden" style={{ height: 1, background: '#1F2937', margin: '0 24px' }} />
 
-            {/* FREE PLAN — locked overlay */}
+          {/* Right 60%: ATS Score */}
+          <div style={{ padding: 24, width: '100%', position: 'relative', overflow: 'hidden' }} className="lg:w-[60%]">
+            <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
+              <Award size={16} color="#22C55E" />
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#F9FAFB' }}>Resume ATS Score</p>
+            </div>
+            <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>How ATS-friendly your resume is</p>
+
             {!isPro ? (
-              <div>
-                {/* blurred fake content */}
+              <div style={{ position: 'relative' }}>
                 <div style={{ filter: 'blur(6px)', pointerEvents: 'none', opacity: 0.4 }}>
                   <AtsRing score={42} />
                 </div>
-                {/* lock overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
-                  style={{ background: 'rgba(17,24,39,0.92)', borderRadius: 16 }}>
-                  <Crown size={32} color="#F59E0B" style={{ marginBottom: 10 }} />
-                  <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 8 }}>Pro Feature</p>
-                  <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, marginBottom: 16 }}>
-                    Get your ATS score and see exactly how to improve your resume to pass company filters automatically.
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4" style={{ background: 'rgba(17,24,39,0.92)', borderRadius: 12 }}>
+                  <Crown size={28} color="#F59E0B" style={{ marginBottom: 8 }} />
+                  <p style={{ fontSize: 15, fontWeight: 700, color: '#F9FAFB', marginBottom: 6 }}>Pro Feature</p>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', lineHeight: 1.6, marginBottom: 14 }}>
+                    Get your ATS score and see exactly how to improve your resume.
                   </p>
-                  <a href="/upgrade"
-                    className="w-full flex items-center justify-center font-bold transition-all"
-                    style={{ height: 44, background: '#22C55E', color: '#000', fontSize: 14, fontWeight: 700, borderRadius: 10, textDecoration: 'none' }}
+                  <a href="/upgrade" className="flex items-center justify-center font-bold transition-all"
+                    style={{ height: 38, padding: '0 20px', background: '#22C55E', color: '#000', fontSize: 13, borderRadius: 8, textDecoration: 'none' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#16A34A'}
                     onMouseLeave={e => e.currentTarget.style.background = '#22C55E'}>
                     Upgrade to Pro — ₹199/month
@@ -387,31 +451,27 @@ export default function Profile() {
                 </div>
               </div>
             ) : !savedResume ? (
-              /* PRO — no resume uploaded */
-              <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
-                <FileSearch size={32} color="#374151" />
+              <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
+                <FileSearch size={28} color="#374151" />
                 <p style={{ fontSize: 13, color: '#6B7280' }}>Upload your resume to get ATS score</p>
-                <label htmlFor="ats-resume-upload"
-                  className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-4 py-2 rounded-lg transition-all"
-                  style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#22C55E'; e.currentTarget.style.color = '#22C55E' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#9CA3AF' }}>
-                  <Upload size={13} /> Upload Resume
+                <label htmlFor="ats-resume-upload" className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-3 py-1.5 rounded-lg"
+                  style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}>
+                  <Upload size={12} /> Upload Resume
                   <input id="ats-resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
                 </label>
               </div>
             ) : atsScore != null ? (
-              /* PRO — has score */
-              <div className="space-y-5">
-                {/* Ring + grade */}
-                <div className="flex items-center gap-5">
+              <div>
+                {/* Ring + summary horizontal */}
+                <div className="flex items-start gap-4" style={{ marginBottom: 16 }}>
                   <AtsRing score={atsScore} />
-                  <div>
-                    <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Overall Score</p>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 11, color: '#6B7280', marginBottom: 2 }}>Overall Score</p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: atsRingColor(atsScore), marginBottom: 4 }}>{atsScore}/100</p>
                     {atsFeedback?.strengths?.slice(0, 2).map(s => (
                       <div key={s} className="flex items-start gap-1.5" style={{ marginBottom: 3 }}>
                         <CheckCircle size={12} color="#22C55E" style={{ marginTop: 2, flexShrink: 0 }} />
-                        <p style={{ fontSize: 11, color: '#9CA3AF' }}>{s}</p>
+                        <p style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>{s}</p>
                       </div>
                     ))}
                   </div>
@@ -419,18 +479,18 @@ export default function Profile() {
 
                 {/* Breakdown */}
                 {atsFeedback?.breakdown && (
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', marginBottom: 10 }}>Score Breakdown</p>
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#F9FAFB', marginBottom: 8 }}>Score Breakdown</p>
                     {Object.entries({
-                      'Contact Info':             { score: atsFeedback.breakdown.contact_info,             max: 10 },
-                      'Work Experience':          { score: atsFeedback.breakdown.work_experience,          max: 25 },
-                      'Quantified Achievements':  { score: atsFeedback.breakdown.quantified_achievements,  max: 20 },
-                      'Keywords':                 { score: atsFeedback.breakdown.keywords,                 max: 20 },
-                      'Education':                { score: atsFeedback.breakdown.education,                max: 10 },
-                      'Skills Section':           { score: atsFeedback.breakdown.skills_section,           max: 10 },
-                      'Formatting':               { score: atsFeedback.breakdown.formatting,               max: 5  },
+                      'Contact Info':            { score: atsFeedback.breakdown.contact_info,            max: 10 },
+                      'Work Experience':         { score: atsFeedback.breakdown.work_experience,         max: 25 },
+                      'Quantified Achievements': { score: atsFeedback.breakdown.quantified_achievements, max: 20 },
+                      'Keywords':                { score: atsFeedback.breakdown.keywords,                max: 20 },
+                      'Education':               { score: atsFeedback.breakdown.education,               max: 10 },
+                      'Skills Section':          { score: atsFeedback.breakdown.skills_section,          max: 10 },
+                      'Formatting':              { score: atsFeedback.breakdown.formatting,              max: 5  },
                     }).map(([label, { score, max }]) => (
-                      <div key={label} style={{ marginBottom: 8 }}>
+                      <div key={label} style={{ height: 28, display: 'flex', flexDirection: 'column', justifyContent: 'center', marginBottom: 6 }}>
                         <div className="flex justify-between" style={{ marginBottom: 3 }}>
                           <span style={{ fontSize: 12, color: '#9CA3AF' }}>{label}</span>
                           <span style={{ fontSize: 12, fontWeight: 600, color: atsRingColor(atsScore) }}>{score}/{max}</span>
@@ -445,27 +505,37 @@ export default function Profile() {
 
                 {/* Improvements */}
                 {atsFeedback?.improvements?.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B', marginBottom: 8 }}>📈 How to improve</p>
-                    {atsFeedback.improvements.map(tip => (
-                      <div key={tip} className="flex items-start gap-1.5" style={{ marginBottom: 5 }}>
-                        <AlertCircle size={12} color="#F59E0B" style={{ marginTop: 2, flexShrink: 0 }} />
-                        <p style={{ fontSize: 12, color: '#9CA3AF' }}>{tip}</p>
+                  <div style={{ marginTop: 12, marginBottom: 8 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#F59E0B', marginBottom: 6 }}>📈 How to improve</p>
+                    {(showAllTips ? atsFeedback.improvements : atsFeedback.improvements.slice(0, 3)).map(tip => (
+                      <div key={tip} className="flex items-start gap-1.5" style={{ marginBottom: 4 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6B7280', flexShrink: 0, marginTop: 4, display: 'inline-block' }} />
+                        <p style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>{tip}</p>
                       </div>
                     ))}
+                    {!showAllTips && atsFeedback.improvements.length > 3 && (
+                      <button onClick={() => setShowAllTips(true)} style={{ fontSize: 11, color: '#22C55E', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        Show {atsFeedback.improvements.length - 3} more
+                      </button>
+                    )}
                   </div>
                 )}
 
                 {/* Missing keywords */}
                 {atsFeedback?.missing_keywords?.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', marginBottom: 8 }}>🔑 Missing Keywords</p>
-                    <div className="flex flex-wrap gap-2">
-                      {atsFeedback.missing_keywords.map(kw => (
-                        <span key={kw} style={{ fontSize: 11, color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', padding: '3px 10px', borderRadius: 20 }}>
+                  <div style={{ marginTop: 12 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: '#F9FAFB', marginBottom: 6 }}>🔑 Missing Keywords</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {atsFeedback.missing_keywords.slice(0, 8).map(kw => (
+                        <span key={kw} style={{ fontSize: 10, color: '#EF4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', padding: '2px 8px', borderRadius: 20 }}>
                           {kw}
                         </span>
                       ))}
+                      {atsFeedback.missing_keywords.length > 8 && (
+                        <span style={{ fontSize: 10, color: '#9CA3AF', background: '#1F2937', padding: '2px 8px', borderRadius: 20 }}>
+                          +{atsFeedback.missing_keywords.length - 8} more
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -473,21 +543,20 @@ export default function Profile() {
                 {/* Reanalyze */}
                 <button onClick={reanalyzeATS} disabled={reanalyzing}
                   className="flex items-center gap-1.5 transition-all"
-                  style={{ fontSize: 13, color: reanalyzing ? '#4B5563' : '#9CA3AF', background: 'transparent', border: '1px solid #374151', padding: '6px 14px', borderRadius: 8, cursor: reanalyzing ? 'not-allowed' : 'pointer' }}
+                  style={{ height: 32, fontSize: 12, color: reanalyzing ? '#4B5563' : '#9CA3AF', background: 'transparent', border: '1px solid #374151', padding: '0 12px', borderRadius: 8, cursor: reanalyzing ? 'not-allowed' : 'pointer', marginTop: 12 }}
                   onMouseEnter={e => { if (!reanalyzing) e.currentTarget.style.borderColor = '#4B5563' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151' }}>
-                  <RefreshCw size={13} className={reanalyzing ? 'animate-spin' : ''} />
+                  <RefreshCw size={12} className={reanalyzing ? 'animate-spin' : ''} />
                   {reanalyzing ? 'Analyzing…' : 'Reanalyze ATS Score'}
                 </button>
               </div>
             ) : (
-              /* PRO — resume uploaded but ATS not yet analyzed */
               <div className="flex flex-col items-center justify-center py-6 text-center gap-3">
                 <p style={{ fontSize: 13, color: '#6B7280' }}>ATS analysis pending</p>
                 <button onClick={reanalyzeATS} disabled={reanalyzing}
                   className="flex items-center gap-2 font-semibold transition-all"
-                  style={{ height: 36, padding: '0 16px', background: '#22C55E', color: '#000', fontSize: 13, borderRadius: 8, border: 'none', cursor: 'pointer' }}>
-                  {reanalyzing ? <><RefreshCw size={13} className="animate-spin" /> Analyzing…</> : <>Analyze Now</>}
+                  style={{ height: 32, padding: '0 16px', background: '#22C55E', color: '#000', fontSize: 12, borderRadius: 8, border: 'none', cursor: 'pointer' }}>
+                  {reanalyzing ? <><RefreshCw size={12} className="animate-spin" /> Analyzing…</> : <>Analyze Now</>}
                 </button>
               </div>
             )}
@@ -500,8 +569,8 @@ export default function Profile() {
           {/* Resume card — amber left border */}
           <div
             id="resume-section"
-            className="rounded-xl p-5"
-            style={{ background: '#111827', border: '1px solid #1F2937', borderLeft: '3px solid #F59E0B' }}
+            className="rounded-xl p-4"
+            style={{ background: '#111827', border: '1px solid #1F2937', borderLeft: '3px solid #F59E0B', minHeight: 180 }}
           >
             <div className="flex items-center gap-2 mb-1">
               <FileText size={15} color="#F59E0B" />
@@ -521,8 +590,8 @@ export default function Profile() {
             ) : savedResume ? (
               <div className="space-y-3">
                 <div
-                  className="flex items-center gap-3 p-3 rounded-lg"
-                  style={{ background: '#1F2937' }}
+                  className="flex items-center gap-3 rounded-lg"
+                  style={{ background: '#1F2937', padding: '10px 14px' }}
                 >
                   <FileText size={20} color="#F59E0B" />
                   <div className="flex-1 min-w-0">
@@ -563,8 +632,8 @@ export default function Profile() {
 
           {/* Account Settings */}
           <div
-            className="rounded-xl p-5 space-y-4"
-            style={{ background: '#111827', border: '1px solid #1F2937' }}
+            className="rounded-xl p-4 space-y-3"
+            style={{ background: '#111827', border: '1px solid #1F2937', minHeight: 180 }}
           >
             <div className="flex items-center gap-2 mb-1">
               <Settings size={15} color="#6B7280" />
@@ -572,14 +641,13 @@ export default function Profile() {
             </div>
 
             {/* Email */}
-            <div className="py-3" style={{ borderBottom: '1px solid #1F2937' }}>
-              <p className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#6B7280' }}>Email</p>
+            <div style={{ height: 44, borderBottom: '1px solid #1F2937', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <p className="text-[11px] uppercase tracking-wider mb-0.5" style={{ color: '#6B7280' }}>Email</p>
               <p className="text-[13px]" style={{ color: '#F9FAFB' }}>{userProfile?.email}</p>
-              <p className="text-[11px] mt-0.5" style={{ color: '#4B5563' }}>Contact support to change</p>
             </div>
 
             {/* Plan */}
-            <div className="flex items-center justify-between py-3" style={{ borderBottom: '1px solid #1F2937' }}>
+            <div className="flex items-center justify-between" style={{ height: 44, borderBottom: '1px solid #1F2937' }}>
               <div>
                 <p className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#6B7280' }}>Plan</p>
                 <p className="text-[13px]" style={{ color: '#F9FAFB' }}>{isPro ? 'Pro Plan' : 'Free Plan'}</p>

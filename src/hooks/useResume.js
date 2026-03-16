@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { parsePdf } from '../utils/pdfParser'
 import { analyzeResume, analyzeResumeATS } from '../lib/claudeApi'
+import { useAuth } from './useAuth'
 
 export function useResume(userPlan) {
+  const { refreshProfile } = useAuth()
   const [resumeText, setResumeText]     = useState('')
   const [resumeFile, setResumeFile]     = useState(null)
   const [uploading, setUploading]       = useState(false)
@@ -75,18 +77,24 @@ export function useResume(userPlan) {
       setUploadDone(true)
 
       // 4 — skill analysis in background (fire-and-forget)
-      analyzeResume(text).then(skills => {
-        if (skills) supabase.from('users').update({ skills }).eq('id', user.id)
+      analyzeResume(text).then(async skills => {
+        if (skills) {
+          await supabase.from('users').update({ skills }).eq('id', user.id)
+          refreshProfile?.()
+        }
       }).catch(() => {})
 
       // 5 — ATS analysis for Pro users only (fire-and-forget)
       if (userPlan === 'pro') {
-        analyzeResumeATS(text).then(ats => {
-          if (ats) supabase.from('users').update({
-            ats_score:       ats.score,
-            ats_feedback:    ats,
-            ats_analyzed_at: new Date().toISOString(),
-          }).eq('id', user.id)
+        analyzeResumeATS(text).then(async ats => {
+          if (ats) {
+            await supabase.from('users').update({
+              ats_score:       ats.score,
+              ats_feedback:    ats,
+              ats_analyzed_at: new Date().toISOString(),
+            }).eq('id', user.id)
+            refreshProfile?.()
+          }
         }).catch(() => {})
       }
 

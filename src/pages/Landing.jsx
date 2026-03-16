@@ -66,36 +66,166 @@ export default function Landing() {
       </nav>
 
       {/* Hero */}
-      <section className="px-4 py-20 text-center max-w-2xl mx-auto">
-        <div className="inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-400 text-xs font-mono">
-          🇮🇳 Built for Indian Job Seekers
+      <section className="relative px-4 pt-16 pb-20 overflow-hidden">
+
+        {/* ── Background layer ── */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          {/* Dot grid */}
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle, #1F2937 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+            opacity: 0.5,
+          }} />
+          {/* Top centre glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[340px] rounded-full" style={{
+            background: 'radial-gradient(ellipse, rgba(34,197,94,0.12) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+          }} />
+          {/* Side glows */}
+          <div className="absolute top-24 -left-20 w-72 h-72 rounded-full" style={{
+            background: 'radial-gradient(ellipse, rgba(139,92,246,0.08) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+          }} />
+          <div className="absolute top-16 -right-20 w-64 h-64 rounded-full" style={{
+            background: 'radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%)',
+            filter: 'blur(50px)',
+          }} />
+          {/* Fade to page bg at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-32" style={{
+            background: 'linear-gradient(to bottom, transparent, #0a0a0f)',
+          }} />
         </div>
 
-        <h1 className="font-mono font-bold text-3xl sm:text-4xl md:text-5xl leading-tight mb-5">
-          Stop Freezing in Interviews.<br />
-          <span className="text-emerald-400">Start Getting Offers.</span>
-        </h1>
+        {/* ── Content ── */}
+        <div className="relative max-w-4xl mx-auto text-center">
 
-        <p className="text-gray-400 text-base md:text-lg leading-relaxed mb-8 max-w-xl mx-auto">
-          AI mock interviews that read your actual resume, ask questions like TCS, Infosys, startups and product companies, and tell you exactly what to fix.
-        </p>
+          {/* Announcement badge — magic SaaS pattern */}
+          <div className="inline-flex items-center gap-2.5 mb-8 px-4 py-2 rounded-full text-xs font-mono"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              New
+            </span>
+            <span className="w-px h-3 bg-gray-700" />
+            <span className="text-gray-400">Resume-aware AI questions now live</span>
+            <Link to="/auth?mode=signup" className="flex items-center gap-0.5 text-gray-300 hover:text-white transition-colors">
+              Try free
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            to="/auth?mode=signup"
-            className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-3.5 rounded-lg transition-colors text-center min-h-11 flex items-center justify-center gap-2"
+          {/* Headline — gradient text from magic Hero Section */}
+          <h1 className="font-bold mb-6 tracking-tight"
+            style={{
+              fontSize: 'clamp(36px, 6vw, 72px)',
+              lineHeight: 1.08,
+              letterSpacing: '-0.04em',
+            }}
           >
-            Start Free — No Card Needed
-          </Link>
-          <Link
-            to="/auth?mode=login"
-            className="w-full sm:w-auto border border-gray-700 hover:border-gray-500 text-gray-400 hover:text-white px-6 py-3.5 rounded-lg transition-colors text-center text-sm min-h-11 flex items-center justify-center"
+            <span style={{
+              background: 'linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.75) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              display: 'block',
+            }}>
+              Practice Interviews.
+            </span>
+            <span style={{
+              background: 'linear-gradient(135deg, #22C55E 0%, #86EFAC 40%, #22C55E 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              display: 'block',
+            }}>
+              Get the Offer.
+            </span>
+          </h1>
+
+          {/* Description */}
+          <p className="mx-auto mb-8 leading-relaxed text-gray-400"
+            style={{ maxWidth: 520, fontSize: 'clamp(15px, 2vw, 18px)' }}
           >
-            Sign in →
-          </Link>
+            AI mock interviews that read your real resume, simulate TCS, Razorpay
+            and startup rounds, and give you{' '}
+            <span className="text-gray-200">brutally honest feedback</span> — at ₹0.
+          </p>
+
+          {/* CTA row */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+            <Link
+              to="/auth?mode=signup"
+              className="group relative w-full sm:w-auto flex items-center justify-center gap-2 font-bold px-8 py-3.5 rounded-xl transition-all duration-200 min-h-11"
+              style={{
+                background: '#22C55E',
+                color: '#000',
+                boxShadow: '0 0 0 0 rgba(34,197,94,0.4)',
+                fontSize: 15,
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#16A34A'
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(34,197,94,0.3)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = '#22C55E'
+                e.currentTarget.style.boxShadow = '0 0 0 0 rgba(34,197,94,0.4)'
+              }}
+            >
+              Start Free — No Card
+              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </Link>
+            <Link
+              to="/auth?mode=login"
+              className="w-full sm:w-auto flex items-center justify-center gap-1.5 text-gray-400 hover:text-white transition-all duration-200 min-h-11 px-6 py-3.5 rounded-xl text-sm"
+              style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+            >
+              Sign in
+            </Link>
+          </div>
+
+          {/* Social proof row — magic SaaS pattern */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+            {/* Avatar stack */}
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {['P','A','D','R','K'].map((l, i) => (
+                  <div key={i}
+                    className="flex items-center justify-center rounded-full text-[10px] font-bold text-black border-2 border-[#0a0a0f]"
+                    style={{ width: 28, height: 28, background: ['#22C55E','#3B82F6','#F59E0B','#8B5CF6','#EF4444'][i], zIndex: 5 - i }}
+                  >
+                    {l}
+                  </div>
+                ))}
+              </div>
+              <div className="text-left">
+                <div className="text-yellow-400 text-xs">★★★★★</div>
+                <p className="text-gray-500 text-xs">2,400+ interviews practiced</p>
+              </div>
+            </div>
+
+            <div className="hidden sm:block w-px h-8 bg-gray-800" />
+
+            {/* Trust chips */}
+            <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
+              {['3 free/month', 'No credit card', 'Cancel anytime'].map(t => (
+                <span key={t} className="flex items-center gap-1 text-gray-600">
+                  <span className="text-emerald-600">✓</span> {t}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
-
-        <p className="text-gray-600 text-xs mt-4">3 free interviews every month · No credit card · Cancel anytime</p>
       </section>
 
       {/* Stats */}

@@ -271,73 +271,132 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats row — 3 cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4" style={{ marginBottom: 24 }}>
+        {/* Stats row — modern metric cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" style={{ marginBottom: 24 }}>
 
-          {/* Sessions */}
-          <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>Sessions</span>
-              <Target size={20} color="#3B82F6" />
+          {/* Sessions card */}
+          <div
+            className="relative overflow-hidden group transition-all duration-200"
+            style={{ ...CARD_STYLE, padding: '20px 22px' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#3B82F6'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#2D3748'}
+          >
+            {/* Accent glow top-left */}
+            <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)' }} />
+            <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions</span>
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                <Target size={15} color="#3B82F6" />
+              </div>
             </div>
-            <p style={{ fontSize: 36, fontWeight: 700, color: '#F9FAFB', margin: '0 0 4px 0' }}>
-              {isPro ? totalSessions : `${interviewsUsed}`}
+            <p style={{ fontSize: 40, fontWeight: 800, color: '#F9FAFB', margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
+              {isPro ? totalSessions : interviewsUsed}
             </p>
-            <p style={{ fontSize: 13, color: '#6B7280' }}>This month</p>
+            <p style={{ fontSize: 12, color: '#4B5563' }}>
+              {isPro ? 'Total completed' : `of 3 free this month`}
+            </p>
+            {/* Bottom accent bar */}
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-xl transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+              style={{ background: 'linear-gradient(90deg, transparent, #3B82F6, transparent)' }} />
           </div>
 
-          {/* Average Score */}
-          <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>Average Score</span>
-              <BarChart2 size={20} color="#22C55E" />
+          {/* Average Score card */}
+          <div
+            className="relative overflow-hidden group transition-all duration-200"
+            style={{ ...CARD_STYLE, padding: '20px 22px' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = avgScore ? scoreColor(avgScore) : '#22C55E'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#2D3748'}
+          >
+            <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: `radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%)` }} />
+            <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Score</span>
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                <BarChart2 size={15} color="#22C55E" />
+              </div>
             </div>
-            <p style={{ fontSize: 36, fontWeight: 700, color: avgScore ? scoreColor(avgScore) : '#F9FAFB', margin: '0 0 4px 0' }}>
+            <p style={{ fontSize: 40, fontWeight: 800, color: avgScore ? scoreColor(avgScore) : '#374151', margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
               {avgScore ? avgScore.toFixed(1) : '—'}
             </p>
-            <p style={{ fontSize: 13, color: '#6B7280' }}>All time avg.</p>
+            <p style={{ fontSize: 12, color: '#4B5563' }}>
+              {avgScore ? 'All-time average' : 'No sessions yet'}
+            </p>
+            {avgScore && (
+              <div style={{ marginTop: 10, height: 3, borderRadius: 2, background: '#1F2937', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 2, width: `${(avgScore / 10) * 100}%`, background: scoreColor(avgScore), transition: 'width 0.8s ease' }} />
+              </div>
+            )}
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-xl transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+              style={{ background: 'linear-gradient(90deg, transparent, #22C55E, transparent)' }} />
           </div>
 
-          {/* Best Score */}
-          <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
-            <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>Best Score</span>
-              <Trophy size={20} color="#F59E0B" />
+          {/* Best Score card */}
+          <div
+            className="relative overflow-hidden group transition-all duration-200"
+            style={{ ...CARD_STYLE, padding: '20px 22px' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#F59E0B'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#2D3748'}
+          >
+            <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)' }} />
+            <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Score</span>
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <Trophy size={15} color="#F59E0B" />
+              </div>
             </div>
-            <p style={{ fontSize: 36, fontWeight: 700, color: '#F9FAFB', margin: '0 0 4px 0' }}>
+            <p style={{ fontSize: 40, fontWeight: 800, color: bestScore ? '#F59E0B' : '#374151', margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
               {bestScore ? bestScore.toFixed(1) : '—'}
             </p>
-            <p style={{ fontSize: 13, color: '#6B7280' }}>Personal best</p>
+            <p style={{ fontSize: 12, color: '#4B5563' }}>Personal best</p>
+            <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-xl transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+              style={{ background: 'linear-gradient(90deg, transparent, #F59E0B, transparent)' }} />
           </div>
 
-          {/* ATS Score — only shown when resume uploaded */}
-          {hasResume && (
-            isPro && atsScore != null ? (
-              <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>ATS Score</span>
-                  <Award size={20} color={scoreColor(atsScore / 10)} />
+          {/* ATS Score card */}
+          {hasResume && isPro && atsScore != null ? (
+            <div
+              className="relative overflow-hidden group transition-all duration-200"
+              style={{ ...CARD_STYLE, padding: '20px 22px' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = scoreColor(atsScore / 10)}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#2D3748'}
+            >
+              <div className="absolute -top-6 -left-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                style={{ background: `radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)` }} />
+              <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ATS Score</span>
+                <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                  <Award size={15} color="#8B5CF6" />
                 </div>
-                <p style={{ fontSize: 36, fontWeight: 700, color: scoreColor(atsScore / 10), margin: '0 0 2px 0' }}>
-                  {atsScore}
-                </p>
-                <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 6 }}>{atsFeedback?.grade || 'Analyzed'}</p>
-                <Link to="/profile" style={{ fontSize: 12, color: '#22C55E', fontWeight: 500 }} className="hover:underline">
-                  View details →
-                </Link>
               </div>
-            ) : (
-              <div style={{ ...CARD_STYLE, padding: '20px 24px' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#9CA3AF' }}>ATS Score</span>
-                  <Lock size={20} color="#6B7280" />
+              <p style={{ fontSize: 40, fontWeight: 800, color: scoreColor(atsScore / 10), margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
+                {atsScore}
+              </p>
+              <p style={{ fontSize: 12, color: '#4B5563', marginBottom: 8 }}>{atsFeedback?.grade || 'ATS Analyzed'}</p>
+              <Link to="/profile" style={{ fontSize: 11, color: '#8B5CF6', fontWeight: 600 }} className="hover:underline">
+                View resume details →
+              </Link>
+              <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-b-xl transition-opacity duration-200 opacity-0 group-hover:opacity-100"
+                style={{ background: 'linear-gradient(90deg, transparent, #8B5CF6, transparent)' }} />
+            </div>
+          ) : (
+            /* Pro upsell / no-resume placeholder */
+            <div
+              className="relative overflow-hidden group transition-all duration-200"
+              style={{ ...CARD_STYLE, padding: '20px 22px', opacity: 0.7 }}
+            >
+              <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#4B5563', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ATS Score</span>
+                <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: '#1F2937', border: '1px solid #374151' }}>
+                  <Lock size={15} color="#6B7280" />
                 </div>
-                <p style={{ fontSize: 16, fontWeight: 600, color: '#9CA3AF', margin: '0 0 4px 0' }}>Pro Feature</p>
-                <Link to="/upgrade" style={{ fontSize: 12, color: '#22C55E', fontWeight: 500 }} className="hover:underline">
-                  Upgrade →
-                </Link>
               </div>
-            )
+              <p style={{ fontSize: 22, fontWeight: 700, color: '#4B5563', margin: '0 0 6px 0' }}>Pro only</p>
+              <Link to="/upgrade" style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }} className="hover:underline">
+                Upgrade to unlock →
+              </Link>
+            </div>
           )}
         </div>
 
