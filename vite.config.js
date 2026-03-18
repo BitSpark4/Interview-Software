@@ -3,6 +3,24 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-dom/client',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      'react-router-dom',
+      'lucide-react',
+      '@supabase/supabase-js',
+      'recharts',
+      'react-markdown',
+    ],
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
+  },
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
+  },
   build: {
     rollupOptions: {
       output: {

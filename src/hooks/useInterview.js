@@ -23,6 +23,10 @@ export function useInterview() {
         interviewType: config.interviewType,
         companyFocus: config.companyFocus,
         resumeText: config.resumeText,
+        sector: config.sector,
+        state: config.state,
+        studentProfile: config.studentProfile,
+        totalQuestions: config.totalQuestions || 10,
       })
 
       if (!text?.trim()) throw new Error('Empty response from AI. Please try again.')
@@ -59,7 +63,7 @@ export function useInterview() {
 
   // ── createSession ────────────────────────────────────────────
   // Only creates the DB row — Claude call happens in loadSession
-  async function createSession(role, interviewType, companyFocus, resumeText) {
+  async function createSession(role, interviewType, companyFocus, resumeText, sector, examType, state, studentProfile, totalQuestions = 10) {
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
     if (authErr || !user) throw new Error('Not signed in. Please log in and try again.')
 
@@ -75,7 +79,7 @@ export function useInterview() {
     }
     // ─────────────────────────────────────────────────────────────
 
-    const config = { role, interviewType, companyFocus, resumeText: resumeText || '' }
+    const config = { role, interviewType, companyFocus, resumeText: resumeText || '', sector: sector || 'it_tech', examType: examType || 'general', state: state || 'maharashtra', studentProfile: studentProfile || null, totalQuestions }
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -85,6 +89,8 @@ export function useInterview() {
         interview_type: interviewType,
         company_focus: companyFocus,
         resume_used: !!resumeText,
+        sector: sector || 'it_tech',
+        exam_type: examType || 'general',
       })
       .select()
       .single()
@@ -154,7 +160,8 @@ export function useInterview() {
     // Determine current question number
     const answeredCount = (msgs || []).filter(m => m.sender === 'user').length
     const lastQ = (msgs || []).filter(m => m.is_question).pop()
-    setQuestionNumber(answeredCount < 5 ? (lastQ?.question_num ?? 1) : 5)
+    const tot = config.totalQuestions || 10
+    setQuestionNumber(answeredCount < tot ? (lastQ?.question_num ?? 1) : tot)
 
     return session
   }
@@ -185,6 +192,10 @@ export function useInterview() {
       role: sessionData.role,
       companyFocus: sessionData.companyFocus,
       resumeText: sessionData.resumeText,
+      sector: sessionData.sector,
+      state: sessionData.state,
+      studentProfile: sessionData.studentProfile,
+      totalQuestions: sessionData.totalQuestions || 10,
     })
 
     // 4. Save AI feedback message to DB
@@ -207,7 +218,8 @@ export function useInterview() {
       { role: 'assistant', content: JSON.stringify(feedback) },
     ]
 
-    if (currentQ < 5) {
+    const total = sessionData.totalQuestions || 10
+    if (currentQ < total) {
       // 5a. Save next question
       const nextQuestion = feedback.next_question
       await supabase.from('messages').insert({
@@ -238,6 +250,7 @@ export function useInterview() {
         conversationHistory: newHistory,
         role: sessionData.role,
         interviewType: sessionData.interviewType,
+        sector: sessionData.sector,
       })
 
       // Update session

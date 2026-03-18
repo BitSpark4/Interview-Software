@@ -7,18 +7,20 @@ import AdminRoute from './components/AdminRoute'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageLoader from './components/PageLoader'
 
-// Lazy-load all pages — each page chunk downloads only when first visited
-const Landing         = lazy(() => import('./pages/Landing'))
-const Auth            = lazy(() => import('./pages/Auth'))
-const Dashboard       = lazy(() => import('./pages/Dashboard'))
-const InterviewSetup  = lazy(() => import('./pages/InterviewSetup'))
-const InterviewSession= lazy(() => import('./pages/InterviewSession'))
-const Report          = lazy(() => import('./pages/Report'))
-const Progress        = lazy(() => import('./pages/Progress'))
-const Upgrade         = lazy(() => import('./pages/Upgrade'))
-const Profile         = lazy(() => import('./pages/Profile'))
-const ResetPassword   = lazy(() => import('./pages/ResetPassword'))
-const Admin           = lazy(() => import('./pages/Admin'))
+// Core pages — static imports to avoid Vite re-optimization on lazy load
+import Dashboard        from './pages/Dashboard'
+import InterviewSetup   from './pages/InterviewSetup'
+import InterviewSession from './pages/InterviewSession'
+
+// Lazy-load secondary pages
+const Landing       = lazy(() => import('./pages/Landing'))
+const Auth          = lazy(() => import('./pages/Auth'))
+const Report        = lazy(() => import('./pages/Report'))
+const Progress      = lazy(() => import('./pages/Progress'))
+const Upgrade       = lazy(() => import('./pages/Upgrade'))
+const Profile       = lazy(() => import('./pages/Profile'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Admin         = lazy(() => import('./pages/Admin'))
 
 export default function App() {
   return (

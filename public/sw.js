@@ -1,4 +1,4 @@
-const CACHE = 'interviewiq-v1'
+const CACHE = 'interviewiq-v2'
 const PRECACHE = ['/', '/manifest.json', '/icon.svg']
 
 self.addEventListener('install', e => {
@@ -35,6 +35,9 @@ self.addEventListener('fetch', e => {
     )
     return
   }
+
+  // Never cache Vite optimizer artifacts — they change between dev sessions
+  if (url.pathname.includes('/.vite/') || url.pathname.includes('/node_modules/.vite/')) return
 
   // Cache-first for static assets (JS, CSS, images, fonts)
   if (url.pathname.match(/\.(js|css|svg|png|woff2?|ico)$/)) {

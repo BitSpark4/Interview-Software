@@ -4,7 +4,7 @@
  * Accessible at /.netlify/functions/claude-proxy
  */
 
-const ALLOWED_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-4-6']
+const ALLOWED_MODELS = ['claude-haiku-4-5', 'claude-haiku-4-5-20251001', 'claude-sonnet-4-6']
 const MAX_CHARS = 50000
 
 const corsHeaders = (origin) => ({
@@ -49,6 +49,7 @@ export const handler = async (event) => {
   }
 
   try {
+    console.log('Request body:', JSON.stringify({ model, max_tokens }))
     const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -58,7 +59,7 @@ export const handler = async (event) => {
       },
       // Always non-streaming — v1 functions return a complete response
       body: JSON.stringify({
-        model:      model || 'claude-haiku-4-5-20251001',
+        model:      model || 'claude-haiku-4-5',
         max_tokens: max_tokens || 500,
         system,
         messages,

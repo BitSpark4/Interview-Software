@@ -5,6 +5,7 @@ import {
   Lightbulb, MessageSquare, Loader2, Mic,
 } from 'lucide-react'
 import { useInterview } from '../hooks/useInterview'
+import { useAuth } from '../hooks/useAuth'
 import Spinner from '../components/Spinner'
 import StarBreakdown from '../components/StarBreakdown'
 import { validators } from '../utils/validators'
@@ -151,6 +152,7 @@ export default function InterviewSession() {
   const [params]  = useSearchParams()
   const sessionId = params.get('id')
   const timer     = useTimer()
+  const { userProfile } = useAuth()
 
   const {
     messages, loading, setLoading, questionNumber,
@@ -205,6 +207,7 @@ export default function InterviewSession() {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); handleSubmit() }
   }
 
+  const totalQuestions = sessionData?.totalQuestions || 10
   const lastFeedbackMsg = [...messages].reverse().find(m => m.sender === 'ai' && !m.is_question && m.feedback)
   const latestFeedback  = lastFeedbackMsg?.feedback
   const hasAnsweredCurrentQ = messages.some(m => m.sender === 'user' && m.question_num === currentQuestion?.question_num)
@@ -239,27 +242,16 @@ export default function InterviewSession() {
           </span>
         </div>
 
-        {/* Progress pips */}
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map(n => (
+        {/* Progress bar */}
+        <div className="flex items-center gap-2 min-w-0 flex-1 mx-4">
+          <span className="text-gray-400 text-xs font-mono shrink-0">Q{questionNumber} of {totalQuestions}</span>
+          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: '#1F2937' }}>
             <div
-              key={n}
-              style={{
-                width: n === questionNumber ? 20 : 6,
-                height: 6,
-                borderRadius: 3,
-                background:
-                  n < questionNumber  ? '#22C55E' :
-                  n === questionNumber ? '#22C55E' :
-                  '#1F2937',
-                opacity: n === questionNumber ? 1 : n < questionNumber ? 0.7 : 1,
-                transition: 'width 0.3s ease, background 0.3s ease',
-              }}
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.round((questionNumber / totalQuestions) * 100)}%`, background: '#22C55E' }}
             />
-          ))}
-          <span className="text-gray-600 text-xs font-mono ml-2">
-            {questionNumber}<span className="text-gray-700">/5</span>
-          </span>
+          </div>
+          <span className="text-gray-600 text-xs font-mono shrink-0">{Math.round((questionNumber / totalQuestions) * 100)}%</span>
         </div>
 
         {/* Timer + Exit */}
@@ -283,7 +275,7 @@ export default function InterviewSession() {
       {/* ── Question stepper ─────────────────────────────────── */}
       <SessionProgress
         questionNumber={questionNumber}
-        totalQuestions={5}
+        totalQuestions={totalQuestions}
         hasAnsweredCurrent={hasAnsweredCurrentQ}
       />
 
@@ -304,7 +296,7 @@ export default function InterviewSession() {
                 style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: '#4ADE80' }}
               >
                 <MessageSquare size={10} />
-                Question {questionNumber} of 5
+                Question {questionNumber} of {totalQuestions}
               </span>
             </div>
 
@@ -316,10 +308,7 @@ export default function InterviewSession() {
                   <span className="text-gray-500 text-sm">Generating question…</span>
                 </div>
               ) : currentQuestion ? (
-                <p
-                  className="leading-relaxed font-medium"
-                  style={{ fontSize: 17, color: '#E2E8F0', letterSpacing: '-0.01em', lineHeight: 1.65 }}
-                >
+                <p className="text-gray-100 whitespace-pre-wrap leading-relaxed font-medium" style={{ fontSize: 17 }}>
                   {currentQuestion.content}
                 </p>
               ) : (
@@ -453,7 +442,7 @@ export default function InterviewSession() {
               </div>
               <div className="text-center">
                 <p className="text-white font-semibold text-lg mb-1">Generating your report…</p>
-                <p className="text-gray-500 text-sm">Analyzing all 5 answers</p>
+                <p className="text-gray-500 text-sm">Analyzing all {totalQuestions} answers</p>
               </div>
               <div className="w-56 h-1 rounded-full overflow-hidden" style={{ background: '#1F2937' }}>
                 <div

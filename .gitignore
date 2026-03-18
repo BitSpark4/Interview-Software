@@ -30,3 +30,7 @@ Thumbs.db
 
 # Design reference images (not app code)
 images/
+
+# Project status/notes (local dev only)
+STATUS.md
+SECTOR-RESEARCH.md
