@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { TrendingUp, Target, BarChart2, Trophy, Flame, AlertCircle, Eye, ChevronRight } from 'lucide-react'
+import { TrendingUp, Target, BarChart2, Trophy, Flame, AlertCircle, Eye, ChevronRight, Play } from 'lucide-react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import { useAuth } from '../hooks/useAuth'
