@@ -1,3 +1,10 @@
+// On localhost: immediately unregister and do nothing — dev mode must never use SW
+if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+  self.addEventListener('install', () => self.skipWaiting())
+  self.addEventListener('activate', () => self.registration.unregister())
+  // No fetch handler — let every request go to the network
+} else {
+
 const CACHE = 'interviewiq-v2'
 const PRECACHE = ['/', '/manifest.json', '/icon.svg']
 
@@ -53,3 +60,5 @@ self.addEventListener('fetch', e => {
     )
   }
 })
+
+} // end else (production only)

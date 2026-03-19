@@ -3,6 +3,20 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    warmup: {
+      clientFiles: [
+        './src/main.jsx',
+        './src/App.jsx',
+        './src/pages/Landing.jsx',
+        './src/pages/Auth.jsx',
+        './src/pages/Dashboard.jsx',
+        './src/lib/supabase.js',
+        './src/lib/claudeApi.js',
+        './src/hooks/useAuth.js',
+      ],
+    },
+  },
   optimizeDeps: {
     include: [
       'react',

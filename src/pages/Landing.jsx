@@ -1,35 +1,21 @@
 import { Link } from 'react-router-dom'
 
-const STEPS = [
-  { icon: '📄', title: 'Upload your resume', desc: 'Claude reads your actual projects and experience — no generic questions.' },
-  { icon: '🎯', title: 'Choose role & round', desc: 'Technical, Behavioral, HR, or Mixed. 6 job roles including PM and Data.' },
-  { icon: '📊', title: 'Get brutally honest feedback', desc: 'Score out of 10, STAR breakdown, what to say differently next time.' },
-]
-
-const PRO_FEATURES = [
-  'Unlimited interviews every month',
-  'Resume-aware personalized questions',
-  'STAR method coaching on every answer',
-  'Progress tracking & weak area analysis',
-  'Company-specific question style',
-  'Priority support',
-]
 
 const TESTIMONIALS = [
   {
     name: 'Priya S.',
-    role: 'Got into Razorpay as SDE-2',
-    text: 'I practiced 12 interviews before my Razorpay round. The feedback on my system design answers was spot-on. Cleared the interview in the first attempt.',
+    achievement: 'Cleared Razorpay SDE-2',
+    text: 'I practiced 12 sessions before my Razorpay system design round. The resume-aware questions were exactly what they asked. Got the offer.',
   },
   {
     name: 'Arjun M.',
-    role: 'Selected at a Bengaluru startup',
-    text: 'Coming from a service company background, I had no idea how product interviews worked. InterviewIQ made me practice ownership stories until they actually sounded real.',
+    achievement: 'MPSC Prelims cleared',
+    text: 'UPSC preparation with Maharashtra-specific questions was exactly what I needed. The current affairs coverage is excellent.',
   },
   {
     name: 'Divya K.',
-    role: 'Cracked TCS Digital from a tier-3 college',
-    text: 'Scored 8.5/10 on my last mock before the actual interview. The STAR breakdown showed me exactly where my answers were vague.',
+    achievement: 'IBPS PO selected',
+    text: 'IBPS PO interview practice with banking awareness questions boosted my confidence completely. Scored 8.5 on my last mock.',
   },
 ]
 
@@ -39,10 +25,20 @@ const PREVIEW_MESSAGES = [
   { from: 'ai', text: '7/10 — Good situation setup. Your action steps were clear, but the Result was missing. Quantify the outcome next time.' },
 ]
 
+const SECTORS = [
+  { icon: '🖥️', title: 'IT and Tech', sub: 'Software · Cloud · Digital', count: '4M aspirants', color: '#2563EB' },
+  { icon: '🏛️', title: 'Government Jobs', sub: 'UPSC · MPSC · SSC · Railway', count: '12M aspirants', color: '#7C3AED' },
+  { icon: '🏦', title: 'Banking and Finance', sub: 'IBPS · SBI · RBI · Insurance', count: '10M aspirants', color: '#F59E0B' },
+  { icon: '⚙️', title: 'Engineering', sub: 'Campus placement · PSU · GATE', count: '1.5M aspirants', color: '#059669' },
+  { icon: '🏥', title: 'Medical', sub: 'NEET · MBBS · Nursing', count: '2M aspirants', color: '#DC2626' },
+  { icon: '🎓', title: 'Students and Freshers', sub: 'CET · JEE · First job', count: '15M aspirants', color: '#EA580C' },
+  { icon: '💼', title: 'Business and MBA', sub: 'CAT · IIM · Group Discussion', count: '500K aspirants', color: '#DB2777' },
+]
+
 const STATS = [
-  { value: '2,400+', label: 'Interviews Practiced' },
-  { value: '₹199', label: 'vs $20 competitors charge' },
-  { value: '4.8★', label: 'Average User Rating' },
+  { value: '35M+', label: 'Exam aspirants in India', color: '#F8FAFC' },
+  { value: '₹199', label: 'Less than coaching books', color: '#F59E0B' },
+  { value: '7', label: 'Exam sectors covered', color: '#F8FAFC' },
 ]
 
 export default function Landing() {
@@ -68,176 +64,179 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative px-4 pt-16 pb-20 overflow-hidden">
 
-        {/* ── Background layer ── */}
+        {/* Background layer */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-          {/* Dot grid */}
           <div className="absolute inset-0" style={{
             backgroundImage: 'radial-gradient(circle, #1F2937 1px, transparent 1px)',
             backgroundSize: '28px 28px',
             opacity: 0.5,
           }} />
-          {/* Top centre glow */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[340px] rounded-full" style={{
-            background: 'radial-gradient(ellipse, rgba(34,197,94,0.12) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse, rgba(37,99,235,0.14) 0%, transparent 70%)',
             filter: 'blur(40px)',
           }} />
-          {/* Side glows */}
           <div className="absolute top-24 -left-20 w-72 h-72 rounded-full" style={{
-            background: 'radial-gradient(ellipse, rgba(139,92,246,0.08) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse, rgba(245,158,11,0.07) 0%, transparent 70%)',
             filter: 'blur(50px)',
           }} />
           <div className="absolute top-16 -right-20 w-64 h-64 rounded-full" style={{
-            background: 'radial-gradient(ellipse, rgba(59,130,246,0.08) 0%, transparent 70%)',
+            background: 'radial-gradient(ellipse, rgba(37,99,235,0.08) 0%, transparent 70%)',
             filter: 'blur(50px)',
           }} />
-          {/* Fade to page bg at bottom */}
           <div className="absolute bottom-0 left-0 right-0 h-32" style={{
             background: 'linear-gradient(to bottom, transparent, #0a0a0f)',
           }} />
         </div>
 
-        {/* ── Content ── */}
+        {/* Content */}
         <div className="relative max-w-4xl mx-auto text-center">
 
-          {/* Announcement badge — magic SaaS pattern */}
-          <div className="inline-flex items-center gap-2.5 mb-8 px-4 py-2 rounded-full text-xs font-mono"
+          {/* Announcement banner */}
+          <div className="inline-flex items-center justify-center mb-8"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              backdropFilter: 'blur(8px)',
+              background: 'rgba(37,99,235,0.15)',
+              border: '1px solid rgba(37,99,235,0.3)',
+              borderRadius: 20,
+              padding: '6px 16px',
             }}
           >
-            <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              New
-            </span>
-            <span className="w-px h-3 bg-gray-700" />
-            <span className="text-gray-400">Resume-aware AI questions now live</span>
-            <Link to="/auth?mode=signup" className="flex items-center gap-0.5 text-gray-300 hover:text-white transition-colors">
-              Try free
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+            <span style={{ fontSize: 12, color: '#94A3B8' }}>🇮🇳 Built for India · All Sectors · ₹199/mo</span>
           </div>
 
-          {/* Headline — gradient text from magic Hero Section */}
-          <h1 className="font-bold mb-6 tracking-tight"
-            style={{
-              fontSize: 'clamp(36px, 6vw, 72px)',
-              lineHeight: 1.08,
-              letterSpacing: '-0.04em',
-            }}
-          >
-            <span style={{
-              background: 'linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.75) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              display: 'block',
-            }}>
-              Practice Interviews.
-            </span>
-            <span style={{
-              background: 'linear-gradient(135deg, #2563EB 0%, #60A5FA 40%, #2563EB 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              display: 'block',
-            }}>
-              Get the Offer.
-            </span>
+          {/* Headline */}
+          <h1 className="font-extrabold text-center mb-0" style={{ lineHeight: 1.1 }}>
+            <span style={{ display: 'block', fontSize: 56, color: '#F8FAFC' }}>Crack Any Interview.</span>
+            <span style={{ display: 'block', fontSize: 56, color: '#2563EB' }}>Any Sector. Any Exam.</span>
           </h1>
 
-          {/* Description */}
-          <p className="mx-auto mb-8 leading-relaxed text-gray-400"
-            style={{ maxWidth: 520, fontSize: 'clamp(15px, 2vw, 18px)' }}
-          >
-            AI mock interviews that read your real resume, simulate TCS, Razorpay
-            and startup rounds, and give you{' '}
-            <span className="text-gray-200">brutally honest feedback</span> — at ₹0.
+          {/* Subheadline */}
+          <p style={{
+            fontSize: 18,
+            color: '#94A3B8',
+            textAlign: 'center',
+            maxWidth: 560,
+            margin: '20px auto 40px',
+            lineHeight: 1.6,
+          }}>
+            AI-powered mock interviews for UPSC, Banking, Engineering, Medical, IT and more.
+            Resume-aware questions. Honest scoring. Starting at ₹0.
           </p>
 
-          {/* CTA row */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
+          {/* CTA buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               to="/auth?mode=signup"
-              className="group relative w-full sm:w-auto flex items-center justify-center gap-2 font-bold px-8 py-3.5 rounded-xl transition-all duration-200 min-h-11"
+              className="w-full sm:w-auto flex items-center justify-center font-bold transition-all duration-200"
               style={{
                 background: '#2563EB',
                 color: '#fff',
-                boxShadow: '0 0 0 0 rgba(37,99,235,0.4)',
+                height: 52,
+                padding: '0 32px',
+                borderRadius: 10,
                 fontSize: 15,
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#1D4ED8'
-                e.currentTarget.style.boxShadow = '0 8px 30px rgba(37,99,235,0.3)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = '#2563EB'
-                e.currentTarget.style.boxShadow = '0 0 0 0 rgba(37,99,235,0.4)'
-              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
             >
-              Start Free — No Card
-              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
+              Start Free — No Card Needed →
             </Link>
             <Link
-              to="/auth?mode=login"
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 text-gray-400 hover:text-white transition-all duration-200 min-h-11 px-6 py-3.5 rounded-xl text-sm"
-              style={{ border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.03)' }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+              to="#how-it-works"
+              className="w-full sm:w-auto flex items-center justify-center transition-all duration-200"
+              style={{
+                background: 'transparent',
+                border: '1px solid #334155',
+                color: '#94A3B8',
+                height: 52,
+                padding: '0 28px',
+                borderRadius: 10,
+                fontSize: 15,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1E293B'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              Sign in
+              See How It Works
             </Link>
           </div>
 
-          {/* Social proof row — magic SaaS pattern */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
-            {/* Avatar stack */}
-            <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {['P','A','D','R','K'].map((l, i) => (
-                  <div key={i}
-                    className="flex items-center justify-center rounded-full text-[10px] font-bold text-black border-2 border-[#0a0a0f]"
-                    style={{ width: 28, height: 28, background: ['#22C55E','#3B82F6','#F59E0B','#8B5CF6','#EF4444'][i], zIndex: 5 - i }}
-                  >
-                    {l}
-                  </div>
-                ))}
-              </div>
-              <div className="text-left">
-                <div className="text-yellow-400 text-xs">★★★★★</div>
-                <p className="text-gray-500 text-xs">2,400+ interviews practiced</p>
-              </div>
-            </div>
+          {/* Trust row */}
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-5">
+            {['2 free sessions/month', 'All 7 exam sectors', 'Cancel anytime'].map(t => (
+              <span key={t} style={{ fontSize: 13, color: '#64748B' }}>✓ {t}</span>
+            ))}
+          </div>
 
-            <div className="hidden sm:block w-px h-8 bg-gray-800" />
-
-            {/* Trust chips */}
-            <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
-              {['3 free/month', 'No credit card', 'Cancel anytime'].map(t => (
-                <span key={t} className="flex items-center gap-1 text-gray-600">
-                  <span className="text-blue-500">✓</span> {t}
-                </span>
-              ))}
-            </div>
+          {/* Stats row */}
+          <div className="flex items-center justify-center gap-0 mt-12 flex-wrap">
+            {STATS.map((s, i) => (
+              <div key={s.label} className="flex items-center">
+                <div className="text-center px-8">
+                  <p className="font-bold" style={{ fontSize: 28, color: s.color }}>{s.value}</p>
+                  <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>{s.label}</p>
+                </div>
+                {i < STATS.length - 1 && (
+                  <div style={{ width: 1, height: 40, background: '#1E293B' }} />
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="px-4 py-8 max-w-2xl mx-auto">
-        <div className="grid grid-cols-3 gap-4 border border-gray-800 rounded-xl bg-gray-900/50 p-6">
-          {STATS.map(s => (
-            <div key={s.label} className="text-center">
-              <p className="font-mono font-bold text-white text-xl sm:text-2xl">{s.value}</p>
-              <p className="text-gray-600 text-xs mt-1">{s.label}</p>
+      {/* Sector Showcase */}
+      <section className="px-4 py-16 max-w-5xl mx-auto border-t border-gray-800">
+        <h2 className="font-bold text-center" style={{ fontSize: 32, color: '#F8FAFC', marginBottom: 12 }}>
+          Every Sector. Every Dream.
+        </h2>
+        <p className="text-center" style={{ fontSize: 16, color: '#64748B', marginBottom: 48 }}>
+          Whether you are preparing for UPSC or campus placement, we have got you covered.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: 16,
+        }}>
+          {SECTORS.map(s => (
+            <div key={s.title}
+              className="transition-all duration-200 cursor-default"
+              style={{
+                background: '#111827',
+                border: '1px solid #1E293B',
+                borderTop: `3px solid ${s.color}`,
+                borderRadius: 12,
+                padding: '20px 16px',
+                textAlign: 'center',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = '#334155'
+                e.currentTarget.style.transform = 'translateY(-2px)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = '#1E293B'
+                e.currentTarget.style.borderTopColor = s.color
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              <div style={{ fontSize: 32 }}>{s.icon}</div>
+              <p className="font-semibold" style={{ fontSize: 14, color: '#F8FAFC', marginTop: 12 }}>{s.title}</p>
+              <p style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{s.sub}</p>
+              <div style={{
+                display: 'inline-block',
+                marginTop: 12,
+                padding: '3px 10px',
+                borderRadius: 20,
+                background: `${s.color}1A`,
+                color: s.color,
+                fontSize: 11,
+              }}>
+                {s.count}
+              </div>
             </div>
           ))}
         </div>
+        <p className="text-center mt-8" style={{ fontSize: 14, color: '#64748B' }}>
+          🇮🇳 35 million+ aspirants across all sectors
+        </p>
       </section>
 
       {/* Live preview */}
@@ -279,58 +278,133 @@ export default function Landing() {
         <p className="text-gray-700 text-xs text-center mt-3">Real feedback. Real scores. No fluff.</p>
       </section>
 
-      {/* Problem */}
-      <section className="px-4 py-12 max-w-2xl mx-auto border-t border-gray-800">
-        <h2 className="font-mono font-bold text-xl text-white mb-4">Why existing tools fail Indian candidates</h2>
-        <div className="space-y-3">
-          {[
-            { problem: 'Designed for US/UK market', fix: 'We cover TCS, Infosys, Wipro, HCL, Razorpay, Zepto, and more' },
-            { problem: '$20/month — unaffordable on an Indian salary', fix: 'Starts at ₹0. Pro is ₹199 — less than a movie ticket' },
-            { problem: 'Generic questions that ignore your resume', fix: 'Claude reads your actual projects and asks follow-up questions about them' },
-            { problem: 'No explanation of what a good answer looks like', fix: 'STAR breakdown on every answer — see exactly what was missing' },
-          ].map(({ problem, fix }) => (
-            <div key={problem} className="grid grid-cols-[1fr_1fr] gap-3">
-              <div className="bg-red-500/5 border border-red-500/20 rounded-lg px-4 py-3 flex items-start gap-2">
-                <span className="text-red-400 text-xs mt-0.5 shrink-0">✗</span>
-                <p className="text-gray-400 text-sm">{problem}</p>
-              </div>
-              <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-4 py-3 flex items-start gap-2">
-                <span className="text-blue-400 text-xs mt-0.5 shrink-0">✓</span>
-                <p className="text-gray-300 text-sm">{fix}</p>
-              </div>
-            </div>
-          ))}
+      {/* Problem vs Solution */}
+      <section className="px-4 py-16 max-w-4xl mx-auto border-t border-gray-800">
+        <h2 className="font-bold text-center" style={{ fontSize: 32, color: '#F8FAFC', marginBottom: 8 }}>Why other tools fail you</h2>
+        <p className="text-center mb-12" style={{ fontSize: 16, color: '#64748B' }}>And why InterviewIQ is different</p>
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Left — Problems */}
+          <div style={{
+            background: 'rgba(239,68,68,0.05)',
+            border: '1px solid rgba(239,68,68,0.1)',
+            borderRadius: 12,
+            padding: 24,
+          }}>
+            <p className="font-semibold flex items-center gap-2 mb-5" style={{ color: '#EF4444', fontSize: 15 }}>
+              <span>✗</span> What they do
+            </p>
+            <ul className="space-y-4">
+              {[
+                'Only IT sector — ignores UPSC, Banking, Medical students',
+                '$20/month — ₹1600+ on Indian salary',
+                'Generic questions not from your actual resume',
+                'No explanation of what a good answer looks like',
+                'Designed for US/UK market, not Indian exam patterns',
+              ].map(t => (
+                <li key={t} className="flex items-start gap-3" style={{ fontSize: 14, color: '#94A3B8' }}>
+                  <span style={{ color: '#EF4444', flexShrink: 0, marginTop: 2 }}>✗</span>
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* Right — Solutions */}
+          <div style={{
+            background: 'rgba(37,99,235,0.05)',
+            border: '1px solid rgba(37,99,235,0.1)',
+            borderRadius: 12,
+            padding: 24,
+          }}>
+            <p className="font-semibold flex items-center gap-2 mb-5" style={{ color: '#2563EB', fontSize: 15 }}>
+              <span>✓</span> What we do
+            </p>
+            <ul className="space-y-4">
+              {[
+                'All 7 sectors — IT, Government, Banking, Engineering, Medical and more',
+                '₹199/month — less than one coaching class book',
+                'Reads your resume and asks about YOUR actual projects',
+                'Shows correct answer and exactly what was missing',
+                'Built for Indian exam patterns, Maharashtra state questions included',
+              ].map(t => (
+                <li key={t} className="flex items-start gap-3" style={{ fontSize: 14, color: '#CBD5E1' }}>
+                  <span style={{ color: '#2563EB', flexShrink: 0, marginTop: 2 }}>✓</span>
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="px-4 py-12 max-w-3xl mx-auto border-t border-gray-800">
-        <h2 className="font-mono font-bold text-xl text-center text-white mb-10">How It Works</h2>
-        <div className="grid md:grid-cols-3 gap-5">
-          {STEPS.map((step, i) => (
-            <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5 relative">
-              <div className="absolute -top-3 -left-2 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
-                <span className="text-white text-xs font-mono font-bold">{i + 1}</span>
+      {/* How It Works */}
+      <section id="how-it-works" className="px-4 py-16 max-w-4xl mx-auto border-t border-gray-800">
+        <h2 className="font-bold text-center" style={{ fontSize: 32, color: '#F8FAFC', marginBottom: 8 }}>How It Works</h2>
+        <p className="text-center mb-12" style={{ fontSize: 16, color: '#64748B' }}>Ready to practice in 60 seconds</p>
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          {[
+            { num: '1', numColor: '#2563EB', icon: '👤', title: 'Create your account', sub: 'Sign up free in 30 seconds. No credit card needed.' },
+            { num: '2', numColor: '#F59E0B', icon: '🎯', title: 'Choose your sector and role', sub: 'UPSC, Frontend Developer, IBPS PO, NEET or any of 40+ options' },
+            { num: '3', numColor: '#22C55E', icon: '🧠', title: 'Get honest AI feedback', sub: 'Score out of 10. Correct answers. What to improve. Every question.' },
+          ].map((step, i) => (
+            <div key={i} className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto flex-1">
+              <div style={{
+                background: '#111827',
+                border: '1px solid #1E293B',
+                borderRadius: 16,
+                padding: '28px 24px',
+                textAlign: 'center',
+                flex: 1,
+                width: '100%',
+              }}>
+                <div className="flex items-center justify-center mx-auto mb-3" style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  background: `${step.numColor}22`,
+                  border: `2px solid ${step.numColor}`,
+                  fontSize: 14, fontWeight: 700, color: step.numColor,
+                }}>
+                  {step.num}
+                </div>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>{step.icon}</div>
+                <h3 className="font-semibold" style={{ fontSize: 15, color: '#F8FAFC', marginBottom: 8 }}>{step.title}</h3>
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>{step.sub}</p>
               </div>
-              <div className="text-3xl mb-3 mt-1">{step.icon}</div>
-              <h3 className="font-mono font-bold text-white text-sm mb-2">{step.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
+              {i < 2 && (
+                <div className="hidden md:flex items-center justify-center flex-shrink-0" style={{ color: '#334155', fontSize: 24 }}>→</div>
+              )}
             </div>
           ))}
         </div>
+        <p className="text-center mt-8" style={{ fontSize: 15, color: '#64748B', fontStyle: 'italic' }}>
+          Then practice again. And again. Until you are interview ready.
+        </p>
       </section>
 
       {/* Testimonials */}
-      <section className="px-4 py-12 max-w-3xl mx-auto border-t border-gray-800">
-        <h2 className="font-mono font-bold text-xl text-center text-white mb-2">People who got the offer</h2>
-        <p className="text-gray-600 text-sm text-center mb-10">Real results from real candidates</p>
-        <div className="grid md:grid-cols-3 gap-5">
+      <section className="px-4 py-16 max-w-4xl mx-auto border-t border-gray-800">
+        <h2 className="font-bold text-center" style={{ fontSize: 32, color: '#F8FAFC', marginBottom: 8 }}>People who got the offer</h2>
+        <p className="text-center mb-12" style={{ fontSize: 16, color: '#64748B' }}>Real results from real candidates across different sectors</p>
+        <div className="grid md:grid-cols-3 gap-6">
           {TESTIMONIALS.map(t => (
-            <div key={t.name} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <p className="text-gray-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
-              <div>
-                <p className="text-white text-sm font-medium">{t.name}</p>
-                <p className="text-blue-400 text-xs font-mono mt-0.5">{t.role}</p>
+            <div key={t.name} style={{
+              background: '#111827',
+              border: '1px solid #1E293B',
+              borderRadius: 16,
+              padding: 24,
+            }}>
+              <div style={{ color: '#F59E0B', fontSize: 14, letterSpacing: 2 }}>★★★★★</div>
+              <p style={{ fontSize: 14, color: '#94A3B8', fontStyle: 'italic', lineHeight: 1.7, margin: '12px 0 20px' }}>
+                "{t.text}"
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center rounded-full font-bold" style={{
+                  width: 40, height: 40, background: '#2563EB', color: '#fff', fontSize: 14,
+                }}>
+                  {t.name.charAt(0)}
+                </div>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>{t.name}</p>
+                  <p style={{ fontSize: 12, color: '#2563EB', marginTop: 2 }}>{t.achievement}</p>
+                </div>
               </div>
             </div>
           ))}
@@ -338,92 +412,167 @@ export default function Landing() {
       </section>
 
       {/* Pricing */}
-      <section className="px-4 py-12 max-w-3xl mx-auto border-t border-gray-800">
-        <h2 className="font-mono font-bold text-xl text-center text-white mb-2">Simple Pricing</h2>
-        <p className="text-gray-600 text-sm text-center mb-10">No subscriptions traps. Cancel in one click.</p>
-        <div className="grid md:grid-cols-2 gap-6">
+      <section className="px-4 py-16 border-t border-gray-800">
+        <h2 className="font-bold text-center" style={{ fontSize: 32, color: '#F8FAFC', marginBottom: 8 }}>Simple Pricing</h2>
+        <p className="text-center mb-12" style={{ fontSize: 16, color: '#64748B' }}>
+          No subscription traps. Cancel with one click.
+        </p>
+        <div className="grid md:grid-cols-2 gap-6 mx-auto" style={{ maxWidth: 800 }}>
 
-          {/* Free */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
-            <p className="text-gray-400 text-sm font-mono mb-2">Free Forever</p>
-            <p className="text-white font-mono font-bold text-4xl mb-1">₹0</p>
-            <p className="text-gray-600 text-xs mb-6">No credit card required</p>
-            <ul className="space-y-2.5 mb-6">
+          {/* Free card */}
+          <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 32 }}>
+            <div className="inline-block mb-4" style={{
+              background: '#1E293B', color: '#94A3B8', fontSize: 12, padding: '4px 12px', borderRadius: 20,
+            }}>
+              Free Forever
+            </div>
+            <p className="font-extrabold" style={{ fontSize: 48, color: '#F8FAFC', lineHeight: 1 }}>₹0</p>
+            <p style={{ fontSize: 14, color: '#64748B', marginTop: 6, marginBottom: 24 }}>2 sessions per month</p>
+            <ul className="space-y-3 mb-8">
               {[
-                { ok: true,  text: '3 interviews per month' },
-                { ok: true,  text: 'All 6 job roles' },
-                { ok: true,  text: 'Score + feedback on every answer' },
-                { ok: false, text: 'Resume-aware questions' },
-                { ok: false, text: 'Progress tracking & weak areas' },
-                { ok: false, text: 'Unlimited interviews' },
+                { ok: true,  text: '2 sessions every month' },
+                { ok: true,  text: 'All 7 exam sectors' },
+                { ok: true,  text: 'Basic score and feedback' },
+                { ok: true,  text: '5 questions per session' },
+                { ok: false, text: 'Correct answers' },
+                { ok: false, text: 'Unlimited sessions' },
               ].map(f => (
-                <li key={f.text} className={`flex items-center gap-2 text-sm ${f.ok ? 'text-gray-300' : 'text-gray-600'}`}>
-                  <span className={f.ok ? 'text-blue-400' : ''}>{f.ok ? '✓' : '✗'}</span>
+                <li key={f.text} className="flex items-center gap-2" style={{
+                  fontSize: 14,
+                  color: f.ok ? '#CBD5E1' : '#4B5563',
+                  textDecoration: f.ok ? 'none' : 'line-through',
+                }}>
+                  <span style={{ color: f.ok ? '#2563EB' : '#4B5563' }}>{f.ok ? '✓' : '🔒'}</span>
                   {f.text}
                 </li>
               ))}
             </ul>
             <Link
               to="/auth?mode=signup"
-              className="block w-full border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500 py-3 rounded-lg text-center text-sm transition-colors"
+              className="block w-full text-center font-medium transition-colors"
+              style={{
+                border: '1px solid #334155', color: '#94A3B8', height: 48,
+                borderRadius: 10, lineHeight: '48px', fontSize: 14,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1E293B'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               Start for Free
             </Link>
           </div>
 
-          {/* Pro */}
-          <div className="bg-gray-900 border border-amber-500/50 rounded-xl p-6 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
-              MOST POPULAR
+          {/* Pro card */}
+          <div className="relative" style={{
+            background: '#111827', border: '2px solid #F59E0B', borderRadius: 16, padding: 32,
+          }}>
+            <div className="absolute left-1/2 -translate-x-1/2 font-bold" style={{
+              top: -14, background: '#F59E0B', color: '#000', fontSize: 12,
+              padding: '4px 16px', borderRadius: 20,
+            }}>
+              Most Popular
             </div>
-            <p className="text-amber-400 text-sm font-mono mb-2">Pro</p>
-            <p className="text-white font-mono font-bold text-4xl mb-1">
-              ₹199<span className="text-gray-500 text-base font-normal">/month</span>
-            </p>
-            <p className="text-gray-600 text-xs mb-6">Cancel anytime. No hidden fees.</p>
-            <ul className="space-y-2.5 mb-6">
-              {PRO_FEATURES.map(f => (
-                <li key={f} className="flex items-center gap-2 text-sm text-gray-300">
-                  <span className="text-blue-400">✓</span>
+            <div className="inline-block mb-4" style={{
+              background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontSize: 12, padding: '4px 12px', borderRadius: 20,
+            }}>
+              Pro Plan
+            </div>
+            <div className="flex items-end gap-1">
+              <p className="font-extrabold" style={{ fontSize: 48, color: '#F8FAFC', lineHeight: 1 }}>₹199</p>
+              <p style={{ fontSize: 16, color: '#64748B', marginBottom: 4 }}>/month</p>
+            </div>
+            <p style={{ fontSize: 13, color: '#64748B', marginTop: 6, marginBottom: 24 }}>Cancel anytime. UPI accepted.</p>
+            <ul className="space-y-3 mb-8">
+              {[
+                'Unlimited sessions every month',
+                'Choose 5 to 30 questions',
+                'Correct answers every question',
+                'Resume-aware personalized questions',
+                'AI career coaching and analysis',
+                'STAR method breakdown',
+                'Weak area study plan',
+                'Company specific questions',
+                'Progress tracking and badges',
+              ].map(f => (
+                <li key={f} className="flex items-center gap-2" style={{ fontSize: 14, color: '#CBD5E1' }}>
+                  <span style={{ color: '#F59E0B' }}>✓</span>
                   {f}
                 </li>
               ))}
             </ul>
             <Link
               to="/upgrade"
-              className="block w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-center text-sm transition-colors"
+              className="block w-full text-center font-bold transition-colors"
+              style={{
+                background: '#F59E0B', color: '#000', height: 52,
+                borderRadius: 10, lineHeight: '52px', fontSize: 15,
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#D97706'}
+              onMouseLeave={e => e.currentTarget.style.background = '#F59E0B'}
             >
               Upgrade to Pro — ₹199/mo
             </Link>
           </div>
         </div>
+        <p className="text-center mt-8" style={{ fontSize: 12, color: '#64748B' }}>
+          🛡️ Secure payment via Razorpay · UPI · Cards · NetBanking
+        </p>
       </section>
 
       {/* Final CTA */}
-      <section className="px-4 py-16 text-center max-w-xl mx-auto border-t border-gray-800">
-        <h2 className="font-mono font-bold text-2xl text-white mb-3">
-          Your next interview is closer than you think.
-        </h2>
-        <p className="text-gray-500 text-sm mb-8">
-          Start practicing today. 3 free interviews. No card.
-        </p>
-        <Link
-          to="/auth?mode=signup"
-          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-lg transition-colors text-base"
-        >
-          Start Free Now →
-        </Link>
+      <section className="px-4 py-16 border-t border-gray-800">
+        <div className="text-center mx-auto" style={{
+          background: '#111827',
+          border: '1px solid #1E293B',
+          borderRadius: 24,
+          padding: '60px 40px',
+          maxWidth: 700,
+          margin: '0 auto',
+        }}>
+          <h2 className="font-extrabold" style={{ fontSize: 40, lineHeight: 1.2 }}>
+            <span style={{ display: 'block', color: '#F8FAFC' }}>Your next interview is</span>
+            <span style={{ display: 'block', color: '#2563EB' }}>closer than you think.</span>
+          </h2>
+          <p style={{ fontSize: 16, color: '#64748B', margin: '16px 0 32px' }}>
+            Join thousands of Indian aspirants practicing smarter with AI coaching.
+          </p>
+          <Link
+            to="/auth?mode=signup"
+            className="inline-flex items-center justify-center font-bold transition-colors"
+            style={{
+              background: '#2563EB', color: '#fff', height: 56,
+              padding: '0 48px', borderRadius: 12, fontSize: 16,
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+            onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+          >
+            Start Practicing Free Now →
+          </Link>
+          <p style={{ fontSize: 13, color: '#64748B', marginTop: 16 }}>
+            No credit card · 2 free sessions · All sectors
+          </p>
+        </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 px-4 py-8 text-center text-gray-600 text-sm">
-        <p className="font-mono font-bold text-gray-500 mb-3">InterviewIQ — Built for India 🇮🇳</p>
-        <div className="flex items-center justify-center gap-6 text-xs">
-          <a href="#" className="hover:text-gray-400 transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-gray-400 transition-colors">Terms of Service</a>
-          <a href="mailto:hello@interviewiq.in" className="hover:text-gray-400 transition-colors">Contact</a>
+      <footer style={{ background: '#0F172A', borderTop: '1px solid #1E293B', padding: '32px 40px' }}>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 max-w-5xl mx-auto">
+          <div>
+            <p className="font-bold text-blue-400" style={{ fontSize: 16 }}>InterviewIQ</p>
+            <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>Built for India 🇮🇳</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <a href="#" className="transition-colors" style={{ fontSize: 13, color: '#64748B' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
+              onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>Privacy Policy</a>
+            <a href="#" className="transition-colors" style={{ fontSize: 13, color: '#64748B' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
+              onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>Terms of Service</a>
+            <a href="mailto:hello@interviewiq.in" className="transition-colors" style={{ fontSize: 13, color: '#64748B' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
+              onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>Contact Us</a>
+          </div>
+          <p style={{ fontSize: 12, color: '#4B5563' }}>© 2026 InterviewIQ</p>
         </div>
-        <p className="text-gray-800 text-xs mt-4">© 2025 InterviewIQ. All rights reserved.</p>
       </footer>
     </main>
   )
