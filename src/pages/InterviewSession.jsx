@@ -7,6 +7,7 @@ import {
 import { useInterview } from '../hooks/useInterview'
 import { useAuth } from '../hooks/useAuth'
 import { saveAskedQuestion } from '../lib/claudeApi'
+import { BrainLoadingAnimation, ConfettiAnimation, MicAnimation } from '../components/LottieAnimation'
 import { supabase } from '../lib/supabase'
 import Spinner from '../components/Spinner'
 import StarBreakdown from '../components/StarBreakdown'
@@ -165,6 +166,7 @@ export default function InterviewSession() {
   const [input, setInput]           = useState('')
   const [error, setError]           = useState('')
   const [showExit, setShowExit]     = useState(false)
+  const [showConfetti, setShowConfetti] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [initLoading, setInitLoading] = useState(true)
   const [retrying, setRetrying]     = useState(false)
@@ -185,7 +187,13 @@ export default function InterviewSession() {
   }, [sessionId])
 
   useEffect(() => {
-    if (isComplete) navigate(`/report/${sessionId}`, { replace: true })
+    if (isComplete) {
+      setShowConfetti(true)
+      setTimeout(() => {
+        setShowConfetti(false)
+        navigate(`/report/${sessionId}`, { replace: true })
+      }, 3500)
+    }
   }, [isComplete])
 
   // Save each new question so it is never repeated in future sessions
@@ -247,6 +255,8 @@ export default function InterviewSession() {
 
   return (
     <div className="bg-[#080C14]" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+      {showConfetti && <ConfettiAnimation onComplete={() => setShowConfetti(false)} />}
 
       {/* ── Top bar ──────────────────────────────────────────── */}
       <header
@@ -322,18 +332,21 @@ export default function InterviewSession() {
             {/* Question text */}
             <div>
               {loading ? (
-                // FIX 3: skeleton while loading
-                <div className="space-y-3 py-1 animate-pulse">
-                  <div className="h-4 bg-gray-800 rounded w-3/4" />
-                  <div className="h-4 bg-gray-800 rounded w-full" />
-                  <div className="h-4 bg-gray-800 rounded w-2/3" />
-                  <p className="text-gray-500 text-sm pt-1">Loading your next question…</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '12px' }}>
+                  <BrainLoadingAnimation size={80} />
+                  <p style={{ color: '#64748B', fontSize: '13px', textAlign: 'center' }}>AI is evaluating your answer...</p>
                 </div>
               ) : currentQuestion?.content?.trim() ? (
-                // FIX 1: only render if content is non-empty
-                <p className="text-gray-100 whitespace-pre-wrap leading-relaxed font-medium" style={{ fontSize: 17 }}>
-                  {currentQuestion.content}
-                </p>
+                <>
+                  {/* Mic indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                    <MicAnimation size={32} />
+                    <span style={{ color: '#64748B', fontSize: '12px' }}>Interviewer is asking</span>
+                  </div>
+                  <p className="text-gray-100 whitespace-pre-wrap leading-relaxed font-medium" style={{ fontSize: 17 }}>
+                    {currentQuestion.content}
+                  </p>
+                </>
               ) : currentQuestion && !currentQuestion.content?.trim() ? (
                 // FIX 4: question object exists but content is empty — show retry
                 <div className="space-y-3 py-1">

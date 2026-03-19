@@ -7,6 +7,7 @@ import {
   Crown, Lock, CheckCircle, Warning, FileMagnifyingGlass, ArrowCounterClockwise, Gear,
   Code, Medal,
 } from '@phosphor-icons/react'
+import { UploadAnimation } from '../components/LottieAnimation'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import { useAuth } from '../hooks/useAuth'
@@ -620,10 +621,10 @@ export default function Profile() {
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#F59E0B'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#374151'}
               >
-                <UploadSimple size={28} color="#F59E0B" />
-                <div>
-                  <p className="text-[13px] font-medium" style={{ color: '#F9FAFB' }}>Upload your resume PDF</p>
-                  <p className="text-[11px] mt-1" style={{ color: '#6B7280' }}>Get skill detection and ATS score · Max 5 MB</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '24px', cursor: 'pointer' }}>
+                  <UploadAnimation size={100} />
+                  <p style={{ color: '#94A3B8', fontSize: '14px', marginTop: '8px' }}>Drop your resume PDF here</p>
+                  <p style={{ color: '#64748B', fontSize: '12px', marginTop: '4px' }}>or click to browse · Max 5MB</p>
                 </div>
                 <input id="resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
               </label>

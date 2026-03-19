@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { Envelope, EnvelopeSimple, Warning, CheckCircle, CaretLeft, Key, Clock } from '@phosphor-icons/react'
 import { useAuth } from '../hooks/useAuth'
 import Spinner from '../components/Spinner'
+import { SuccessCheckAnimation } from '../components/LottieAnimation'
 import Toast from '../components/Toast'
 import { supabase } from '../lib/supabase'
 import { checkRateLimit } from '../lib/rateLimiter'
@@ -66,16 +67,9 @@ function SignupSuccessScreen({ email, onBack }) {
   return (
     <div className="w-full max-w-sm mx-auto text-center">
 
-      {/* Mail icon */}
-      <div
-        className="flex items-center justify-center mx-auto mb-6"
-        style={{
-          width: 72, height: 72, borderRadius: '50%',
-          background: 'rgba(34,197,94,0.12)',
-          border: '1px solid rgba(34,197,94,0.25)',
-        }}
-      >
-        <Envelope size={32} color="#2563EB" />
+      {/* Success animation */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '16px' }}>
+        <SuccessCheckAnimation size={80} />
       </div>
 
       {/* Title */}

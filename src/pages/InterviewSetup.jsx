@@ -1,6 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PlayCircle, Warning } from '@phosphor-icons/react'
+import {
+  PlayCircle, Warning,
+  Desktop, Buildings, Bank, Wrench, Heartbeat, GraduationCap, Briefcase,
+  Code, Terminal, ChartBar, ChartLineUp, ClipboardText, UserCircle,
+  Globe, Shield, BookOpen, Lightning, Target, Brain, Microphone,
+  Star, Trophy, Medal, Crown, Gear, Newspaper, Calculator,
+  FirstAidKit, Pill, Scales, Flag,
+} from '@phosphor-icons/react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import { useAuth } from '../hooks/useAuth'
@@ -12,78 +19,78 @@ import { checkRateLimit } from '../lib/rateLimiter'
 // ─── Data ────────────────────────────────────────────────────────────────────
 
 const SECTORS = [
-  { id: 'it-tech',      icon: '💻', title: 'IT & Tech',    subtitle: 'Software, cloud & digital careers' },
-  { id: 'government',   icon: '🏛️', title: 'Government',   subtitle: 'UPSC, SSC, PSU & civil services' },
-  { id: 'banking',      icon: '🏦', title: 'Banking',      subtitle: 'IBPS, SBI, RBI & finance roles' },
-  { id: 'engineering',  icon: '⚙️', title: 'Engineering',  subtitle: 'Core engineering & manufacturing' },
-  { id: 'medical',      icon: '🏥', title: 'Medical',      subtitle: 'Healthcare, nursing & medical exams' },
-  { id: 'students',     icon: '🎓', title: 'Students',     subtitle: 'Fresher, campus & entry-level' },
-  { id: 'business',     icon: '📈', title: 'Business',     subtitle: 'MBA, consulting & management' },
+  { id: 'it-tech',      icon: Desktop,       color: '#2563EB', title: 'IT & Tech',    subtitle: 'Software, cloud & digital careers' },
+  { id: 'government',   icon: Buildings,     color: '#7C3AED', title: 'Government',   subtitle: 'UPSC, SSC, PSU & civil services' },
+  { id: 'banking',      icon: Bank,          color: '#F59E0B', title: 'Banking',      subtitle: 'IBPS, SBI, RBI & finance roles' },
+  { id: 'engineering',  icon: Wrench,        color: '#059669', title: 'Engineering',  subtitle: 'Core engineering & manufacturing' },
+  { id: 'medical',      icon: Heartbeat,     color: '#DC2626', title: 'Medical',      subtitle: 'Healthcare, nursing & medical exams' },
+  { id: 'students',     icon: GraduationCap, color: '#EA580C', title: 'Students',     subtitle: 'Fresher, campus & entry-level' },
+  { id: 'business',     icon: Briefcase,     color: '#DB2777', title: 'Business',     subtitle: 'MBA, consulting & management' },
 ]
 
 const ROLES_BY_SECTOR = {
   'it-tech': [
-    { id: 'frontend',  icon: '🎨', label: 'Frontend Developer',    sub: 'React, Vue, HTML/CSS' },
-    { id: 'backend',   icon: '⚙️', label: 'Backend Developer',     sub: 'Node, Python, Java' },
-    { id: 'fullstack', icon: '🔗', label: 'Full Stack Developer',  sub: 'End-to-end web development' },
-    { id: 'data',      icon: '📊', label: 'Data Engineer',         sub: 'SQL, pipelines, analytics' },
-    { id: 'pm',        icon: '📋', label: 'Product Manager',       sub: 'Roadmap, stakeholders, metrics' },
-    { id: 'hr',        icon: '👥', label: 'HR & People',           sub: 'Talent, culture, operations' },
+    { id: 'frontend',  icon: Code,         label: 'Frontend Developer',    sub: 'React, Vue, HTML/CSS' },
+    { id: 'backend',   icon: Terminal,      label: 'Backend Developer',     sub: 'Node, Python, Java' },
+    { id: 'fullstack', icon: Lightning,     label: 'Full Stack Developer',  sub: 'End-to-end web development' },
+    { id: 'data',      icon: ChartLineUp,   label: 'Data Engineer',         sub: 'SQL, pipelines, analytics' },
+    { id: 'pm',        icon: ClipboardText, label: 'Product Manager',       sub: 'Roadmap, stakeholders, metrics' },
+    { id: 'hr',        icon: UserCircle,    label: 'HR & People',           sub: 'Talent, culture, operations' },
   ],
   'government': [
-    { id: 'upsc',     icon: '🏛️', label: 'UPSC Civil Services', sub: 'IAS, IPS, IFS & allied' },
-    { id: 'mpsc',     icon: '📜', label: 'MPSC Maharashtra',     sub: 'State civil services' },
-    { id: 'ssc',      icon: '📝', label: 'SSC CGL',              sub: 'Staff Selection Commission' },
-    { id: 'railway',  icon: '🚂', label: 'Railway RRB NTPC',     sub: 'Non-technical popular categories' },
-    { id: 'defence',  icon: '🪖', label: 'Defence NDA / CDS',    sub: 'Army, Navy, Air Force entry' },
-    { id: 'teaching', icon: '📚', label: 'Teaching TET / CTET',  sub: 'Teacher eligibility tests' },
+    { id: 'upsc',     icon: Scales,        label: 'UPSC Civil Services', sub: 'IAS, IPS, IFS & allied' },
+    { id: 'mpsc',     icon: Flag,          label: 'MPSC Maharashtra',     sub: 'State civil services' },
+    { id: 'ssc',      icon: ClipboardText, label: 'SSC CGL',              sub: 'Staff Selection Commission' },
+    { id: 'railway',  icon: Globe,         label: 'Railway RRB NTPC',     sub: 'Non-technical popular categories' },
+    { id: 'defence',  icon: Shield,        label: 'Defence NDA / CDS',    sub: 'Army, Navy, Air Force entry' },
+    { id: 'teaching', icon: BookOpen,      label: 'Teaching TET / CTET',  sub: 'Teacher eligibility tests' },
   ],
   'banking': [
-    { id: 'ibps-po',    icon: '🏦', label: 'IBPS PO',      sub: 'Probationary Officer' },
-    { id: 'ibps-clerk', icon: '📋', label: 'IBPS Clerk',   sub: 'Clerical cadre' },
-    { id: 'sbi-po',     icon: '💼', label: 'SBI PO',       sub: 'State Bank Probationary Officer' },
-    { id: 'sbi-clerk',  icon: '📝', label: 'SBI Clerk',    sub: 'Junior Associates' },
-    { id: 'rbi',        icon: '🏛️', label: 'RBI Grade B',  sub: 'Reserve Bank of India' },
-    { id: 'insurance',  icon: '🛡️', label: 'Insurance / LIC', sub: 'LIC ADO, AAO & agents' },
+    { id: 'ibps-po',    icon: Bank,          label: 'IBPS PO',         sub: 'Probationary Officer' },
+    { id: 'ibps-clerk', icon: ClipboardText, label: 'IBPS Clerk',      sub: 'Clerical cadre' },
+    { id: 'sbi-po',     icon: Bank,          label: 'SBI PO',          sub: 'State Bank Probationary Officer' },
+    { id: 'sbi-clerk',  icon: Medal,         label: 'SBI Clerk',       sub: 'Junior Associates' },
+    { id: 'rbi',        icon: Buildings,     label: 'RBI Grade B',     sub: 'Reserve Bank of India' },
+    { id: 'insurance',  icon: Shield,        label: 'Insurance / LIC', sub: 'LIC ADO, AAO & agents' },
   ],
   'engineering': [
-    { id: 'mechanical',  icon: '🔩', label: 'Mechanical Engineering',  sub: 'Manufacturing, design, thermal' },
-    { id: 'civil',       icon: '🏗️', label: 'Civil Engineering',       sub: 'Structures, infrastructure' },
-    { id: 'electrical',  icon: '⚡', label: 'Electrical Engineering',   sub: 'Power, circuits, systems' },
-    { id: 'electronics', icon: '🔌', label: 'Electronics Engineering',  sub: 'Embedded, VLSI, IoT' },
-    { id: 'chemical',    icon: '🧪', label: 'Chemical Engineering',     sub: 'Process, refinery, pharma' },
-    { id: 'gate',        icon: '📐', label: 'GATE Preparation',         sub: 'Graduate Aptitude Test in Eng.' },
+    { id: 'mechanical',  icon: Wrench,    label: 'Mechanical Engineering',  sub: 'Manufacturing, design, thermal' },
+    { id: 'civil',       icon: Buildings, label: 'Civil Engineering',       sub: 'Structures, infrastructure' },
+    { id: 'electrical',  icon: Lightning, label: 'Electrical Engineering',   sub: 'Power, circuits, systems' },
+    { id: 'electronics', icon: Gear,      label: 'Electronics Engineering',  sub: 'Embedded, VLSI, IoT' },
+    { id: 'chemical',    icon: Brain,     label: 'Chemical Engineering',     sub: 'Process, refinery, pharma' },
+    { id: 'gate',        icon: Target,    label: 'GATE Preparation',         sub: 'Graduate Aptitude Test in Eng.' },
   ],
   'medical': [
-    { id: 'neet-pg',     icon: '🏥', label: 'NEET PG',              sub: 'Postgraduate medical entrance' },
-    { id: 'mbbs',        icon: '🩺', label: 'MBBS Clinical',         sub: 'Residency & hospital interviews' },
-    { id: 'nursing',     icon: '💉', label: 'Nursing Entrance',      sub: 'B.Sc Nursing & staff nurse' },
-    { id: 'pharmacy',    icon: '💊', label: 'Pharmacy',              sub: 'D.Pharm, B.Pharm & clinical' },
-    { id: 'paramedical', icon: '🩹', label: 'Paramedical',           sub: 'Lab tech, radiology, physio' },
+    { id: 'neet-pg',     icon: Heartbeat,    label: 'NEET PG',              sub: 'Postgraduate medical entrance' },
+    { id: 'mbbs',        icon: FirstAidKit,  label: 'MBBS Clinical',         sub: 'Residency & hospital interviews' },
+    { id: 'nursing',     icon: Heartbeat,    label: 'Nursing Entrance',      sub: 'B.Sc Nursing & staff nurse' },
+    { id: 'pharmacy',    icon: Pill,         label: 'Pharmacy',              sub: 'D.Pharm, B.Pharm & clinical' },
+    { id: 'paramedical', icon: Star,         label: 'Paramedical',           sub: 'Lab tech, radiology, physio' },
   ],
   'students': [
-    { id: 'cet',       icon: '📝', label: 'CET Maharashtra',      sub: 'MHT-CET engineering & pharmacy' },
-    { id: 'jee',       icon: '🔬', label: 'JEE Mains Prep',       sub: 'Engineering entrance' },
-    { id: '12th-viva', icon: '📚', label: '12th Standard Viva',   sub: 'Board practical examinations' },
-    { id: 'first-job', icon: '💼', label: 'First Job Interview',  sub: 'Entry-level & internships' },
-    { id: 'campus',    icon: '🎯', label: 'Campus Placement',     sub: 'On-campus recruitment drives' },
+    { id: 'cet',       icon: Brain,        label: 'CET Maharashtra',      sub: 'MHT-CET engineering & pharmacy' },
+    { id: 'jee',       icon: Calculator,   label: 'JEE Mains Prep',       sub: 'Engineering entrance' },
+    { id: '12th-viva', icon: BookOpen,     label: '12th Standard Viva',   sub: 'Board practical examinations' },
+    { id: 'first-job', icon: Briefcase,    label: 'First Job Interview',  sub: 'Entry-level & internships' },
+    { id: 'campus',    icon: Target,       label: 'Campus Placement',     sub: 'On-campus recruitment drives' },
   ],
   'business': [
-    { id: 'cat',        icon: '📊', label: 'CAT Preparation',         sub: 'Common Admission Test for MBA' },
-    { id: 'iim',        icon: '🎓', label: 'IIM MBA Interview',        sub: 'Personal interview & WAT' },
-    { id: 'gd',         icon: '💬', label: 'Group Discussion',         sub: 'GD practice & strategies' },
-    { id: 'sales',      icon: '📈', label: 'Sales Interview',          sub: 'B2B, B2C & inside sales' },
-    { id: 'operations', icon: '🔄', label: 'Operations Interview',     sub: 'Supply chain & process mgmt' },
+    { id: 'cat',        icon: ChartBar,     label: 'CAT Preparation',         sub: 'Common Admission Test for MBA' },
+    { id: 'iim',        icon: GraduationCap,label: 'IIM MBA Interview',        sub: 'Personal interview & WAT' },
+    { id: 'gd',         icon: Microphone,   label: 'Group Discussion',         sub: 'GD practice & strategies' },
+    { id: 'sales',      icon: ChartLineUp,  label: 'Sales Interview',          sub: 'B2B, B2C & inside sales' },
+    { id: 'operations', icon: Gear,         label: 'Operations Interview',     sub: 'Supply chain & process mgmt' },
   ],
 }
 
 const EDUCATION_LEVELS = [
-  { id: '10th',    icon: '📘', label: '10th Standard',      sub: 'Secondary school' },
-  { id: '12th',    icon: '📗', label: '12th Standard',      sub: 'Higher secondary' },
-  { id: 'diploma', icon: '📜', label: 'Diploma',            sub: '3-year polytechnic' },
-  { id: 'eng-grad',icon: '⚙️', label: 'Engineering Graduate', sub: 'B.E / B.Tech' },
-  { id: 'grad',    icon: '🏫', label: 'Other Graduate',     sub: 'B.A / B.Com / B.Sc' },
-  { id: 'pg',      icon: '🎓', label: 'Post Graduate',      sub: 'M.A / M.Sc / MBA' },
+  { id: '10th',    icon: BookOpen,      color: '#64748B', label: '10th Standard',       sub: 'Secondary school' },
+  { id: '12th',    icon: BookOpen,      color: '#2563EB', label: '12th Standard',       sub: 'Higher secondary' },
+  { id: 'diploma', icon: ClipboardText, color: '#059669', label: 'Diploma',             sub: '3-year polytechnic' },
+  { id: 'eng-grad',icon: Gear,          color: '#2563EB', label: 'Engineering Graduate',sub: 'B.E / B.Tech' },
+  { id: 'grad',    icon: GraduationCap, color: '#7C3AED', label: 'Other Graduate',      sub: 'B.A / B.Com / B.Sc' },
+  { id: 'pg',      icon: Medal,         color: '#F59E0B', label: 'Post Graduate',       sub: 'M.A / M.Sc / MBA' },
 ]
 
 const INDIAN_STATES = [
@@ -102,57 +109,66 @@ const STATE_SECTORS = new Set(['government', 'banking', 'engineering'])
 
 const INTERVIEW_TYPES_BY_SECTOR = {
   'it-tech': [
-    { id: 'technical',  icon: '💻', label: 'Technical',   sub: 'Algorithms, system design, code' },
-    { id: 'behavioral', icon: '🌟', label: 'Behavioral',  sub: 'STAR method, past experience' },
-    { id: 'hr',         icon: '👥', label: 'HR Round',    sub: 'Salary, culture, career goals' },
-    { id: 'mixed',      icon: '🔀', label: 'Mixed',       sub: 'All types — like a real interview', recommended: true },
+    { id: 'technical',  icon: Code,       color: '#2563EB', label: 'Technical',   sub: 'Algorithms, system design, code' },
+    { id: 'behavioral', icon: Star,       color: '#F59E0B', label: 'Behavioral',  sub: 'STAR method, past experience' },
+    { id: 'hr',         icon: UserCircle, color: '#7C3AED', label: 'HR Round',    sub: 'Salary, culture, career goals' },
+    { id: 'mixed',      icon: Lightning,  color: '#059669', label: 'Mixed',       sub: 'All types — like a real interview', recommended: true },
   ],
   'government': [
-    { id: 'gk',              icon: '🌍', label: 'GK Round',         sub: 'History, Geography, Polity' },
-    { id: 'current_affairs', icon: '📰', label: 'Current Affairs',  sub: 'News, events, schemes' },
-    { id: 'essay_writing',   icon: '✍️', label: 'Essay Writing',    sub: 'Descriptive answer practice' },
-    { id: 'mock_test',       icon: '🎯', label: 'Full Mock Test',   sub: 'Complete exam simulation', recommended: true },
+    { id: 'gk',              icon: Globe,        color: '#2563EB', label: 'GK Round',        sub: 'History, Geography, Polity' },
+    { id: 'current_affairs', icon: Newspaper,    color: '#7C3AED', label: 'Current Affairs', sub: 'News, events, schemes' },
+    { id: 'essay_writing',   icon: ClipboardText,color: '#059669', label: 'Essay Writing',   sub: 'Descriptive answer practice' },
+    { id: 'mock_test',       icon: Target,       color: '#F59E0B', label: 'Full Mock Test',  sub: 'Complete exam simulation', recommended: true },
   ],
   'banking': [
-    { id: 'banking_awareness', icon: '🏦', label: 'Banking Awareness',     sub: 'RBI, schemes, banking concepts' },
-    { id: 'numerical',         icon: '🔢', label: 'Numerical Reasoning',   sub: 'Quant, DI, logical reasoning' },
-    { id: 'english',           icon: '📝', label: 'English Round',         sub: 'Grammar, comprehension, vocab' },
-    { id: 'mock_test',         icon: '🎯', label: 'Full Mock Test',        sub: 'Complete exam simulation', recommended: true },
+    { id: 'banking_awareness', icon: Bank,       color: '#F59E0B', label: 'Banking Awareness',   sub: 'RBI, schemes, banking concepts' },
+    { id: 'numerical',         icon: Calculator, color: '#2563EB', label: 'Numerical Reasoning', sub: 'Quant, DI, logical reasoning' },
+    { id: 'english',           icon: BookOpen,   color: '#059669', label: 'English Round',       sub: 'Grammar, comprehension, vocab' },
+    { id: 'mock_test',         icon: Target,     color: '#F59E0B', label: 'Full Mock Test',      sub: 'Complete exam simulation', recommended: true },
   ],
   'engineering': [
-    { id: 'core_technical', icon: '⚙️', label: 'Core Technical',  sub: 'Fundamentals & numericals' },
-    { id: 'hr_behavioral',  icon: '🌟', label: 'HR Behavioral',   sub: 'Teamwork, leadership, goals' },
-    { id: 'aptitude',       icon: '🧠', label: 'Aptitude Round',  sub: 'Quant, reasoning, verbal' },
-    { id: 'mock_test',      icon: '🎯', label: 'Full Mock Test',  sub: 'Complete interview simulation', recommended: true },
+    { id: 'core_technical', icon: Gear,   color: '#059669', label: 'Core Technical', sub: 'Fundamentals & numericals' },
+    { id: 'hr_behavioral',  icon: Star,   color: '#F59E0B', label: 'HR Behavioral',  sub: 'Teamwork, leadership, goals' },
+    { id: 'aptitude',       icon: Brain,  color: '#7C3AED', label: 'Aptitude Round', sub: 'Quant, reasoning, verbal' },
+    { id: 'mock_test',      icon: Target, color: '#2563EB', label: 'Full Mock Test', sub: 'Complete interview simulation', recommended: true },
   ],
   'medical': [
-    { id: 'clinical_case',     icon: '🩺', label: 'Clinical Case',     sub: 'Diagnosis, management plans' },
-    { id: 'subject_knowledge', icon: '📚', label: 'Subject Knowledge', sub: 'Pharma, anatomy, medicine' },
-    { id: 'viva_voce',         icon: '🎤', label: 'Viva Practice',     sub: 'Oral examination style' },
-    { id: 'mock_test',         icon: '🎯', label: 'Full Mock Test',    sub: 'Complete exam simulation', recommended: true },
+    { id: 'clinical_case',     icon: Heartbeat,  color: '#DC2626', label: 'Clinical Case',     sub: 'Diagnosis, management plans' },
+    { id: 'subject_knowledge', icon: BookOpen,   color: '#2563EB', label: 'Subject Knowledge', sub: 'Pharma, anatomy, medicine' },
+    { id: 'viva_voce',         icon: Microphone, color: '#7C3AED', label: 'Viva Practice',     sub: 'Oral examination style' },
+    { id: 'mock_test',         icon: Target,     color: '#F59E0B', label: 'Full Mock Test',    sub: 'Complete exam simulation', recommended: true },
   ],
   'students': [
-    { id: 'subject_knowledge',  icon: '📚', label: 'Subject Knowledge',    sub: 'Topic-wise concept questions' },
-    { id: 'aptitude_reasoning', icon: '🧠', label: 'Aptitude Reasoning',   sub: 'Quant, logical & verbal' },
-    { id: 'hr_personality',     icon: '🌟', label: 'HR & Personality',     sub: 'Intro, strengths, goals' },
-    { id: 'mock_test',          icon: '🎯', label: 'Full Mock Test',       sub: 'Complete exam simulation', recommended: true },
+    { id: 'subject_knowledge',  icon: BookOpen,   color: '#2563EB', label: 'Subject Knowledge',  sub: 'Topic-wise concept questions' },
+    { id: 'aptitude_reasoning', icon: Brain,      color: '#7C3AED', label: 'Aptitude Reasoning', sub: 'Quant, logical & verbal' },
+    { id: 'hr_personality',     icon: Star,       color: '#F59E0B', label: 'HR & Personality',   sub: 'Intro, strengths, goals' },
+    { id: 'mock_test',          icon: Target,     color: '#059669', label: 'Full Mock Test',      sub: 'Complete exam simulation', recommended: true },
   ],
   'business': [
-    { id: 'case_study',       icon: '📊', label: 'Case Study',       sub: 'Business problem analysis' },
-    { id: 'hr_leadership',    icon: '🌟', label: 'HR Leadership',    sub: 'STAR, leadership examples' },
-    { id: 'group_discussion', icon: '💬', label: 'Group Discussion', sub: 'Opinion, debate, communication' },
-    { id: 'mock_test',        icon: '🎯', label: 'Full Mock Test',   sub: 'Complete interview simulation', recommended: true },
+    { id: 'case_study',       icon: ChartBar,   color: '#2563EB', label: 'Case Study',       sub: 'Business problem analysis' },
+    { id: 'hr_leadership',    icon: Star,       color: '#F59E0B', label: 'HR Leadership',    sub: 'STAR, leadership examples' },
+    { id: 'group_discussion', icon: Microphone, color: '#7C3AED', label: 'Group Discussion', sub: 'Opinion, debate, communication' },
+    { id: 'mock_test',        icon: Target,     color: '#059669', label: 'Full Mock Test',   sub: 'Complete interview simulation', recommended: true },
   ],
 }
 
 const EXPERIENCE_OPTIONS = [
-  { id: 'fresher', icon: '🎒', label: 'Fresher',      sub: 'No work experience yet' },
-  { id: '1-2',     icon: '💼', label: '1–2 Years',    sub: 'Early career professional' },
-  { id: '3-5',     icon: '📈', label: '3–5 Years',    sub: 'Mid-level professional' },
-  { id: '5plus',   icon: '🏆', label: '5+ Years',     sub: 'Senior professional' },
+  { id: 'fresher', icon: GraduationCap, color: '#94A3B8', label: 'Fresher',   sub: 'No work experience yet' },
+  { id: '1-2',     icon: Briefcase,     color: '#2563EB', label: '1–2 Years', sub: 'Early career professional' },
+  { id: '3-5',     icon: ChartLineUp,   color: '#059669', label: '3–5 Years', sub: 'Mid-level professional' },
+  { id: '5plus',   icon: Trophy,        color: '#F59E0B', label: '5+ Years',  sub: 'Senior professional' },
 ]
 
 // ─── Card Grid (shared inside this file) ────────────────────────────────────
+
+function CardIcon({ icon, color, isSelected }) {
+  // Phosphor icons are React.forwardRef objects (typeof === 'object'), not plain functions
+  if (typeof icon !== 'string') {
+    const Ic = icon
+    return <Ic size={26} weight="duotone" color={isSelected ? (color || '#60A5FA') : '#64748B'} />
+  }
+  return <span className="text-2xl leading-none">{icon}</span>
+}
 
 function CardGrid({ items, selected, onSelect, cols = 2 }) {
   const colClass = cols === 3 ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2'
@@ -176,7 +192,7 @@ function CardGrid({ items, selected, onSelect, cols = 2 }) {
                 Recommended
               </span>
             )}
-            <span className="text-2xl leading-none">{item.icon}</span>
+            <CardIcon icon={item.icon} color={item.color} isSelected={isSelected} />
             <span className={`text-sm font-semibold leading-tight ${isSelected ? 'text-white' : 'text-gray-200'}`}>
               {item.label ?? item.title}
             </span>

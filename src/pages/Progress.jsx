@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChartLineUp, Target, ChartBar, Trophy, Lightning, Warning, Eye, CaretRight, PlayCircle, Sparkle, ArrowUp, ArrowDown, ArrowRight, BookOpen, Lightbulb, ClipboardText, CaretLeft, Star, Medal, Crown, Globe } from '@phosphor-icons/react'
+import { FireStreakAnimation } from '../components/LottieAnimation'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import AppLayout from '../components/AppLayout'
 import ProFeatureWrapper from '../components/ProFeatureWrapper'
@@ -1039,20 +1040,22 @@ export default function Progress() {
               {/* Streak card */}
               <div style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: '12px', padding: '20px' }}
                 className="flex items-center gap-4">
-                <Lightning size={40} className="text-orange-400 shrink-0" />
-                <div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-bold text-orange-400 font-mono">{streak}</span>
-                    <span className="text-orange-300 text-sm font-semibold">Day Streak</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <FireStreakAnimation size={56} />
+                  <div>
+                    <div style={{ fontSize: '36px', fontWeight: '800', color: '#F97316' }}>{streak}</div>
+                    <div style={{ fontSize: '13px', color: '#64748B' }}>Day Streak</div>
                   </div>
-                  <p className="text-gray-400 text-xs mt-1">
-                    {streak === 0
-                      ? 'Start practicing today to build your streak'
-                      : streak <= 7
-                      ? 'Great start! Practice tomorrow to keep it going'
-                      : 'Incredible! You are on fire'}
-                  </p>
                 </div>
+                <p className="text-gray-400 text-xs mt-1 ml-2">
+                  {streak === 0
+                    ? 'Start practicing today'
+                    : streak <= 3
+                    ? 'Keep it going!'
+                    : streak <= 7
+                    ? 'You are on fire!'
+                    : 'Unstoppable! 🔥'}
+                </p>
               </div>
 
               {/* Badges */}

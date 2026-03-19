@@ -21,7 +21,7 @@ export default class ErrorBoundary extends Component {
           <div className="text-center max-w-md">
             <p className="text-4xl mb-4">⚠️</p>
             <h2 className="font-mono font-bold text-white text-xl mb-3">Something went wrong</h2>
-            <p className="text-gray-400 text-sm mb-6">
+            <p className="text-gray-400 text-sm mb-3">
               An error occurred loading this page. Try going back or refresh.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { SectorIcon } from '../components/LottieAnimation'
 
 
 const TESTIMONIALS = [
@@ -26,13 +27,13 @@ const PREVIEW_MESSAGES = [
 ]
 
 const SECTORS = [
-  { icon: '🖥️', title: 'IT and Tech', sub: 'Software · Cloud · Digital', count: '4M aspirants', color: '#2563EB' },
-  { icon: '🏛️', title: 'Government Jobs', sub: 'UPSC · MPSC · SSC · Railway', count: '12M aspirants', color: '#7C3AED' },
-  { icon: '🏦', title: 'Banking and Finance', sub: 'IBPS · SBI · RBI · Insurance', count: '10M aspirants', color: '#F59E0B' },
-  { icon: '⚙️', title: 'Engineering', sub: 'Campus placement · PSU · GATE', count: '1.5M aspirants', color: '#059669' },
-  { icon: '🏥', title: 'Medical', sub: 'NEET · MBBS · Nursing', count: '2M aspirants', color: '#DC2626' },
-  { icon: '🎓', title: 'Students and Freshers', sub: 'CET · JEE · First job', count: '15M aspirants', color: '#EA580C' },
-  { icon: '💼', title: 'Business and MBA', sub: 'CAT · IIM · Group Discussion', count: '500K aspirants', color: '#DB2777' },
+  { id: 'it_tech',     title: 'IT and Tech',           sub: 'Software · Cloud · Digital',      count: '4M aspirants',  color: '#2563EB' },
+  { id: 'government',  title: 'Government Jobs',        sub: 'UPSC · MPSC · SSC · Railway',     count: '12M aspirants', color: '#7C3AED' },
+  { id: 'banking',     title: 'Banking and Finance',    sub: 'IBPS · SBI · RBI · Insurance',    count: '10M aspirants', color: '#F59E0B' },
+  { id: 'engineering', title: 'Engineering',            sub: 'Campus placement · PSU · GATE',   count: '1.5M aspirants',color: '#059669' },
+  { id: 'medical',     title: 'Medical',                sub: 'NEET · MBBS · Nursing',           count: '2M aspirants',  color: '#DC2626' },
+  { id: 'students',    title: 'Students and Freshers',  sub: 'CET · JEE · First job',           count: '15M aspirants', color: '#EA580C' },
+  { id: 'business',    title: 'Business and MBA',       sub: 'CAT · IIM · Group Discussion',    count: '500K aspirants',color: '#DB2777' },
 ]
 
 const STATS = [
@@ -217,7 +218,7 @@ export default function Landing() {
                 e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
-              <div style={{ fontSize: 32 }}>{s.icon}</div>
+              <SectorIcon sector={s.id} size={36} />
               <p className="font-semibold" style={{ fontSize: 14, color: '#F8FAFC', marginTop: 12 }}>{s.title}</p>
               <p style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{s.sub}</p>
               <div style={{

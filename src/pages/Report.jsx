@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Medal, CheckCircle, XCircle, Lightbulb, PlayCircle, CaretDown, CaretUp, ShareNetwork, Target, ArrowUp, ArrowDown } from '@phosphor-icons/react'
+import { TrophyAnimation, SuccessCheckAnimation, ConfettiAnimation } from '../components/LottieAnimation'
 import AppLayout from '../components/AppLayout'
 import ProFeatureWrapper from '../components/ProFeatureWrapper'
 import Spinner from '../components/Spinner'
@@ -131,6 +132,7 @@ export default function Report() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
   const [openQ, setOpenQ]       = useState(0)
+  const [showConfetti, setShowConfetti] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -161,6 +163,14 @@ export default function Report() {
     }
     load()
   }, [id])
+
+  useEffect(() => {
+    if (session?.total_score >= 8) {
+      const t1 = setTimeout(() => setShowConfetti(true), 500)
+      const t2 = setTimeout(() => setShowConfetti(false), 4000)
+      return () => { clearTimeout(t1); clearTimeout(t2) }
+    }
+  }, [session])
 
   if (loading) {
     return (
@@ -200,12 +210,33 @@ export default function Report() {
     `I scored ${session.total_score}/10 in a ${session.role} mock interview on InterviewIQ! #InterviewPrep #JobSearch`
   )
 
+  const headerAnimation = () => {
+    if (session.total_score >= 8) {
+      return (
+        <div style={{ textAlign: 'center' }}>
+          <TrophyAnimation size={100} />
+          <p style={{ color: '#F59E0B', fontSize: '14px', fontWeight: '600' }}>Outstanding!</p>
+        </div>
+      )
+    }
+    if (session.total_score >= 6) {
+      return (
+        <div style={{ textAlign: 'center' }}>
+          <SuccessCheckAnimation size={80} />
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
     <AppLayout>
+      {showConfetti && <ConfettiAnimation onComplete={() => setShowConfetti(false)} />}
       <div className="p-4 md:p-8 space-y-6 max-w-4xl">
 
         {/* Header */}
         <div>
+          {headerAnimation()}
           <p className="text-blue-400 text-sm font-mono mb-1 flex items-center gap-1.5">
             <CheckCircle size={14} /> Interview Complete
           </p>

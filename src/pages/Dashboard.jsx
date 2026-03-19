@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   PlayCircle, Target, ChartBar, Trophy,
   Eye, Circle, CaretRight, Medal, Lock, X,
+  Rocket, Sparkle, Lightning,
 } from '@phosphor-icons/react'
 import AppLayout from '../components/AppLayout'
 import ProFeatureWrapper from '../components/ProFeatureWrapper'
 import UpgradeModal from '../components/UpgradeModal'
 import Spinner from '../components/Spinner'
+import { EmptyStudyAnimation, SectorIcon } from '../components/LottieAnimation'
 import { useAuth } from '../hooks/useAuth'
 import { useUsage } from '../hooks/useUsage'
 import { supabase } from '../lib/supabase'
@@ -205,13 +207,63 @@ export default function Dashboard() {
 
   return (
     <AppLayout>
+      <style>{`
+        @keyframes iconGlowBlue {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); }
+          50%       { box-shadow: 0 0 14px 4px rgba(37,99,235,0.28); }
+        }
+        @keyframes iconGlowGold {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+          50%       { box-shadow: 0 0 14px 4px rgba(245,158,11,0.32); }
+        }
+        @keyframes iconGlowPurple {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); }
+          50%       { box-shadow: 0 0 14px 4px rgba(139,92,246,0.28); }
+        }
+        @keyframes iconFloat {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-4px); }
+        }
+        @keyframes iconPulse {
+          0%, 100% { transform: scale(1); }
+          50%       { transform: scale(1.18); }
+        }
+        @keyframes iconSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes iconRing {
+          0%   { transform: scale(1); opacity: 0.5; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }
+        @keyframes rocketFloat {
+          0%, 100% { transform: translateY(0px) rotate(-15deg); }
+          50%       { transform: translateY(-6px) rotate(-15deg); }
+        }
+        @keyframes sparkleRotate {
+          0%   { transform: rotate(0deg) scale(1); }
+          50%  { transform: rotate(180deg) scale(1.2); }
+          100% { transform: rotate(360deg) scale(1); }
+        }
+        @keyframes btnGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0.4); }
+          50%       { box-shadow: 0 0 24px 6px rgba(37,99,235,0.25); }
+        }
+        @keyframes btnGlowGold {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); }
+          50%       { box-shadow: 0 0 24px 6px rgba(245,158,11,0.25); }
+        }
+      `}</style>
       <div style={{ background: '#0A0F1E', minHeight: '100vh', padding: 32 }}>
 
         {/* Welcome header */}
         <div style={{ marginBottom: userProfile?.primary_sector ? 16 : 28 }}>
-          <h1 style={{ fontSize: 32, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>
-            Welcome back, {firstName} 👋
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>
+              Welcome back, {firstName} 👋
+            </h1>
+            <Rocket size={28} color="#2563EB" style={{ animation: 'rocketFloat 2.4s ease-in-out infinite', flexShrink: 0 }} />
+          </div>
           <p style={{ fontSize: 15, color: '#9CA3AF', marginTop: 6 }}>
             Ready to improve your interview skills today?
           </p>
@@ -229,14 +281,24 @@ export default function Dashboard() {
             }}>
               {/* Goal label */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 180 }}>
-                <Target size={20} color="#2563EB" style={{ flexShrink: 0 }} />
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{
+                    position: 'absolute', inset: -4, borderRadius: '50%',
+                    border: '2px solid #2563EB',
+                    animation: 'iconRing 2s ease-out infinite',
+                  }} />
+                  <Target size={20} color="#2563EB" />
+                </div>
                 <div>
                   <p style={{ fontSize: 11, color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 2px 0' }}>
                     Your Career Goal
                   </p>
-                  <p style={{ fontSize: 18, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>
-                    {sector?.emoji} {sector?.label ?? userProfile.career_goal}
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <SectorIcon sector={userProfile.primary_sector} size={22} />
+                    <p style={{ fontSize: 18, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>
+                      {sector?.label ?? userProfile.career_goal}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -288,9 +350,12 @@ export default function Dashboard() {
 
           {/* LEFT — Ready to Practice hero */}
           <div className="lg:col-span-8" style={{ ...CARD_STYLE, padding: 28 }}>
-            <p style={{ fontSize: 18, fontWeight: 700, color: '#F9FAFB', margin: '0 0 8px 0' }}>
-              Ready to Practice?
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <p style={{ fontSize: 18, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>
+                Ready to Practice?
+              </p>
+              <Sparkle size={18} color="#F59E0B" weight="fill" style={{ animation: 'sparkleRotate 3s ease-in-out infinite' }} />
+            </div>
             <p style={{ fontSize: 14, color: '#9CA3AF', margin: '0 0 24px 0' }}>
               Start an AI mock interview tailored to your role.
             </p>
@@ -299,21 +364,22 @@ export default function Dashboard() {
               <button
                 onClick={() => navigate('/upgrade')}
                 className="w-full flex items-center justify-center gap-2 transition-all duration-200"
-                style={{ height: 52, background: '#F59E0B', borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#000', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#D97706'; e.currentTarget.style.boxShadow = '0 0 20px rgba(245,158,11,0.3)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#F59E0B'; e.currentTarget.style.boxShadow = 'none' }}
+                style={{ height: 52, background: '#F59E0B', borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#000', border: 'none', cursor: 'pointer', animation: 'btnGlowGold 2.5s ease-in-out infinite' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#D97706' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#F59E0B' }}
               >
+                <Lightning size={18} color="#000" weight="fill" />
                 Upgrade for Unlimited Practice
               </button>
             ) : (
               <button
                 onClick={() => { if (!canStartInterview) { setShowUpgradeModal(true); return } navigate('/interview/setup') }}
                 className="w-full flex items-center justify-center gap-2 transition-all duration-200"
-                style={{ height: 52, background: '#2563EB', borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#1D4ED8'; e.currentTarget.style.boxShadow = '0 0 20px rgba(37,99,235,0.3)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.boxShadow = 'none' }}
+                style={{ height: 52, background: '#2563EB', borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff', border: 'none', cursor: 'pointer', animation: 'btnGlow 2.5s ease-in-out infinite' }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#1D4ED8' }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#2563EB' }}
               >
-                <PlayCircle size={16} color="#fff" />
+                <PlayCircle size={20} color="#fff" weight="fill" style={{ animation: 'iconFloat 2s ease-in-out infinite' }} />
                 Start Interview
               </button>
             )}
@@ -350,7 +416,13 @@ export default function Dashboard() {
           {/* RIGHT — Focus Areas */}
           <div className="lg:col-span-4" style={{ ...CARD_STYLE, padding: 24, borderLeft: '3px solid #F59E0B' }}>
             <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
-              <Circle size={18} color="#F59E0B" />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{
+                  position: 'absolute', width: 18, height: 18, borderRadius: '50%',
+                  border: '2px solid #F59E0B', animation: 'iconRing 2s ease-out infinite',
+                }} />
+                <Lightning size={14} color="#F59E0B" weight="fill" style={{ animation: 'iconPulse 2s ease-in-out infinite' }} />
+              </div>
               <p style={{ fontSize: 16, fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Focus Areas</p>
             </div>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 0 }}>
@@ -510,8 +582,8 @@ export default function Dashboard() {
               style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)' }} />
             <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions</span>
-              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
-                <Target size={15} color="#3B82F6" />
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', animation: 'iconGlowBlue 2.5s ease-in-out infinite' }}>
+                <Target size={15} color="#3B82F6" style={{ animation: 'iconFloat 2.5s ease-in-out infinite' }} />
               </div>
             </div>
             <p style={{ fontSize: 40, fontWeight: 800, color: '#F9FAFB', margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
@@ -547,8 +619,8 @@ export default function Dashboard() {
               style={{ background: `radial-gradient(circle, rgba(100,116,139,0.12) 0%, transparent 70%)` }} />
             <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Avg Score</span>
-              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)' }}>
-                <ChartBar size={15} color="#64748B" />
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)', animation: 'iconGlowBlue 3s ease-in-out infinite' }}>
+                <ChartBar size={15} color="#64748B" style={{ animation: 'iconPulse 3s ease-in-out infinite' }} />
               </div>
             </div>
             <p style={{ fontSize: 40, fontWeight: 800, color: avgScore ? scoreColor(avgScore) : '#374151', margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
@@ -577,8 +649,8 @@ export default function Dashboard() {
               style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)' }} />
             <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
               <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Best Score</span>
-              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)' }}>
-                <Trophy size={15} color="#F59E0B" />
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', animation: 'iconGlowGold 2s ease-in-out infinite' }}>
+                <Trophy size={15} color="#F59E0B" weight="fill" style={{ animation: 'iconFloat 2s ease-in-out infinite' }} />
               </div>
             </div>
             <p style={{ fontSize: 40, fontWeight: 800, color: bestScore ? '#F59E0B' : '#374151', margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
@@ -601,8 +673,8 @@ export default function Dashboard() {
                 style={{ background: `radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)` }} />
               <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>ATS Score</span>
-                <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
-                  <Medal size={15} color="#8B5CF6" />
+                <div className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 32, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', animation: 'iconGlowPurple 2.8s ease-in-out infinite' }}>
+                  <Medal size={15} color="#8B5CF6" weight="fill" style={{ animation: 'iconPulse 2.8s ease-in-out infinite' }} />
                 </div>
               </div>
               <p style={{ fontSize: 40, fontWeight: 800, color: scoreColor(atsScore / 10), margin: '0 0 4px 0', lineHeight: 1, letterSpacing: '-0.02em' }}>
@@ -638,7 +710,10 @@ export default function Dashboard() {
         {/* Recent Interviews */}
         <div style={{ ...CARD_STYLE, padding: 24 }}>
           <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>Recent Interviews</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ChartBar size={18} color="#2563EB" style={{ animation: 'iconFloat 2.5s ease-in-out infinite' }} />
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>Recent Interviews</p>
+            </div>
             <Link
               to="/progress"
               style={{ fontSize: 13, fontWeight: 500, color: '#2563EB' }}
@@ -653,10 +728,18 @@ export default function Dashboard() {
               <Spinner size={20} color="border-blue-500" />
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center" style={{ padding: '40px 0' }}>
-              <Target size={36} color="#374151" style={{ margin: '0 auto 12px' }} />
-              <p style={{ fontSize: 14, color: '#6B7280' }}>No interviews yet</p>
-              <p style={{ fontSize: 12, color: '#4B5563', marginTop: 4 }}>Start your first interview to see results here</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', textAlign: 'center' }}>
+              <EmptyStudyAnimation size={180} />
+              <h3 style={{ color: '#F8FAFC', fontSize: '18px', fontWeight: '600', margin: '8px 0 8px' }}>No interviews yet</h3>
+              <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '24px', maxWidth: '280px', lineHeight: '1.6' }}>
+                Start your first practice session and see your results here
+              </p>
+              <button
+                onClick={() => navigate('/interview/setup')}
+                style={{ background: '#2563EB', color: 'white', border: 'none', borderRadius: '10px', padding: '12px 28px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Start First Interview →
+              </button>
             </div>
           ) : (
             <>
@@ -772,7 +855,7 @@ export default function Dashboard() {
                   onMouseEnter={e => { if (!savingGoal) e.currentTarget.style.borderColor = s.color }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E293B' }}
                 >
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>{s.emoji}</span>
+                  <SectorIcon sector={s.id} size={26} />
                   <div className="flex-1">
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', margin: 0 }}>{s.label}</p>
                   </div>
@@ -873,7 +956,7 @@ export default function Dashboard() {
                   onMouseEnter={e => { if (!savingGoal) e.currentTarget.style.borderColor = s.color }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = userProfile?.primary_sector === s.id ? 'rgba(37,99,235,0.3)' : '#1E293B' }}
                 >
-                  <span style={{ fontSize: 20, lineHeight: 1 }}>{s.emoji}</span>
+                  <SectorIcon sector={s.id} size={26} />
                   <div className="flex-1">
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', margin: 0 }}>{s.label}</p>
                   </div>
