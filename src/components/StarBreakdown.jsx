@@ -19,7 +19,7 @@ export default function StarBreakdown({ breakdown }) {
             key={key}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs border ${
               isPresent
-                ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/5'
+                ? 'text-green-400 border-green-500/30 bg-green-500/5'
                 : status === 'partial'
                   ? 'text-amber-400 border-amber-500/30 bg-amber-500/5'
                   : 'text-red-400 border-red-500/30 bg-red-500/5'

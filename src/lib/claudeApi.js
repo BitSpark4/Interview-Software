@@ -1,6 +1,8 @@
 // All Claude calls go through /.netlify/functions/claude-proxy — key stays server-side.
 // Use `netlify dev` locally (port 8888) so functions run alongside the frontend.
 
+import { supabase } from './supabase'
+
 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 const PROXY_URL = isLocalDev
   ? 'http://localhost:8888/.netlify/functions/claude-proxy'
@@ -40,15 +42,30 @@ Rules for asking questions:
 - Be direct like a real interviewer
 `.trim()
 
-export function buildSectorPrompt(sector, role, interviewType, companyFocus, state, profile, totalQuestions = 10) {
-  const QUESTION_RULES = buildQuestionRules(totalQuestions)
+const buildBaseRules = (questionCount, previousQuestions = []) => `
+CRITICAL RULES — FOLLOW EXACTLY:
+1. Ask exactly ${questionCount} questions total
+2. After question ${questionCount} generate report JSON
+3. Plain text only — no markdown no asterisks no hashtags
+4. One question at a time — never ask two together
+5. Be direct — no long introductions before question
+6. NEVER start a question with a number prefix like "Question 1 of 10" or "Q1:" or "1." — just ask the question directly
+
+NEVER REPEAT THESE QUESTIONS:
+${previousQuestions.length > 0 ? previousQuestions.slice(0, 30).join('\n') : 'No previous questions yet'}
+
+If repeating a topic ask from completely different angle.
+`.trim()
+
+export function buildSectorPrompt(sector, role, interviewType, companyFocus, state, profile, totalQuestions = 10, previousQuestions = []) {
+  const BASE = buildBaseRules(totalQuestions, previousQuestions)
   const stateContext = state === 'maharashtra'
     ? 'Include Maharashtra specific questions about Maratha history, Maharashtra geography, state schemes, and local governance when relevant.'
     : `Include ${state} specific regional questions when relevant.`
 
   const prompts = {
     government: `
-${QUESTION_RULES}
+${BASE}
 
 You are an experienced UPSC and government exam interview coach in India.
 Role: ${role}
@@ -58,19 +75,18 @@ ${stateContext}
 Interview rules for government exams:
 - Ask questions based on actual UPSC MPSC SSC exam patterns
 - Mix topics: History, Geography, Polity, Economy, Current Affairs
-- Include at least 2 current affairs questions per session
+- Include 2 to 3 current affairs questions based on recent India news
+- Focus on government schemes policies Supreme Court judgments international relations
 - Ask location specific questions based on user state
-- For UPSC: formal academic question style
-- For SSC: faster paced practical questions
+- For UPSC: formal academic question style. For SSC: faster paced practical questions
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","topic":"History","next_question":"..."}
 - Ask exactly ${totalQuestions} questions total. After question ${totalQuestions} generate final report.
-- Questions must be from actual exam syllabus only
-- Never make up facts or incorrect historical dates
+- Questions must be from actual exam syllabus only. Never make up facts or incorrect historical dates.
     `.trim(),
 
     banking: `
-${QUESTION_RULES}
+${BASE}
 
 You are an experienced banking exam coach and HR interviewer at SBI IBPS.
 Role: ${role}
@@ -78,9 +94,9 @@ State: ${state}
 
 Interview rules for banking:
 - Ask questions about banking concepts RBI policies recent news
+- Include current RBI policy questions. Ask about repo rate current value
+- Ask about recent banking sector news. Include one question on digital banking UPI
 - Include numerical and reasoning questions for PO Clerk roles
-- Ask about recent RBI policy changes repo rate CRR SLR
-- Include questions about government financial schemes
 - Ask situation based banking customer service scenarios
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","topic":"Banking Awareness","next_question":"..."}
@@ -89,7 +105,7 @@ Interview rules for banking:
     `.trim(),
 
     engineering: `
-${QUESTION_RULES}
+${BASE}
 
 You are an experienced technical interviewer at a top engineering company or PSU.
 Role: ${role} Engineer
@@ -97,10 +113,10 @@ State: ${state}
 
 Interview rules for engineering:
 - Ask core technical questions from engineering fundamentals
-- Start with concept then go to application
-- Ask numerical problems with calculations
-- Include questions about projects and practical experience
-- For freshers ask final year project questions
+- Start with concept then go to application. Ask numerical problems with calculations
+- Include one question about recent technological development in this field
+- For PSU ask about company specific operations
+- Include questions about projects and practical experience. For freshers ask final year project questions
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","topic":"Thermodynamics","next_question":"..."}
 - Ask exactly ${totalQuestions} questions total. After question ${totalQuestions} generate final report.
@@ -108,7 +124,7 @@ Interview rules for engineering:
     `.trim(),
 
     medical: `
-${QUESTION_RULES}
+${BASE}
 
 You are an experienced medical professor and clinical interviewer in India.
 Role: ${role}
@@ -117,9 +133,9 @@ State: ${state}
 Interview rules for medical:
 - Present clinical cases and ask for diagnosis management
 - Ask about drug mechanisms side effects dosages
-- Include emergency medicine priority questions
-- Ask about recent medical guidelines and protocols
-- For NEET PG ask subject specific high yield topics
+- Include one question about recent health scheme or disease update in India
+- Reference current health guidelines
+- Include emergency medicine priority questions. For NEET PG ask subject specific high yield topics
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","topic":"Medicine","next_question":"..."}
 - Ask exactly ${totalQuestions} questions total. After question ${totalQuestions} generate final report.
@@ -127,7 +143,7 @@ Interview rules for medical:
     `.trim(),
 
     students: `
-${QUESTION_RULES}
+${BASE}
 
 You are an encouraging and friendly interview coach for students and freshers in India.
 Role: ${role}
@@ -136,11 +152,9 @@ Target: ${profile?.target_exam || 'placement'}
 State: ${state}
 
 Interview rules for students:
-- Be encouraging and confidence building in tone
-- Ask questions appropriate for their education level
-- No assumption of work experience
-- For CET JEE ask conceptual subject questions
-- For first job ask basic HR and aptitude questions
+- Be encouraging always. Start with easier question to build confidence. Gradually increase difficulty
+- Ask questions appropriate for their education level. No assumption of work experience
+- For CET JEE ask conceptual subject questions. For first job ask basic HR and aptitude questions
 - Explain what a good answer looks like after each response
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","encouragement":"You are on the right track!","next_question":"..."}
@@ -149,7 +163,7 @@ Interview rules for students:
     `.trim(),
 
     business: `
-${QUESTION_RULES}
+${BASE}
 
 You are an experienced MBA interviewer and business coach in India.
 Role: ${role}
@@ -157,29 +171,27 @@ State: ${state}
 
 Interview rules for business MBA:
 - Ask case study and business problem questions
-- Include current business news India topics
+- Include one current business news topic as group discussion practice
+- Ask about recent economic policy change
 - Ask about business fundamentals strategy finance
-- For group discussion give opinion based prompts
-- Ask about leadership teamwork examples
+- For group discussion give opinion based prompts. Ask about leadership teamwork examples
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","topic":"Strategy","next_question":"..."}
 - Ask exactly ${totalQuestions} questions total. After question ${totalQuestions} generate final report.
     `.trim(),
 
     it_tech: `
-${QUESTION_RULES}
+${BASE}
 
 You are an experienced technical interviewer at a top Indian tech company.
 Role: ${role} | Type: ${interviewType} | Company: ${companyFocus}
 ${profile?.resumeText ? `Resume (key points): ${profile.resumeText.slice(0, 800)}` : ''}
 
 Interview rules for IT:
-- Ask technical questions relevant to the role
-- If resume provided ask about their actual projects
+- Ask about latest technology trends. If resume available ask about their projects first
 - Mix technical and behavioral questions for mixed type
 - Use STAR method evaluation for behavioral answers
-- Keep questions relevant to Indian job market
-- Ask ONE question at a time, no preamble
+- Keep questions relevant to Indian job market. Ask ONE question at a time no preamble
 - After each answer respond ONLY with JSON:
   {"score":7,"good":"...","missing":"...","ideal":"...","star_breakdown":{"situation":"present","task":"present","action":"present","result":"missing"},"next_question":"..."}
 - Ask exactly ${totalQuestions} questions total. After question ${totalQuestions} generate final report.
@@ -187,6 +199,66 @@ Interview rules for IT:
   }
 
   return prompts[sector] || prompts.it_tech
+}
+
+// ── getPreviousQuestions — fetch last 50 asked questions for this user+sector ──
+const getPreviousQuestions = async (userId, sector) => {
+  if (!userId) return []
+  try {
+    const { data } = await supabase
+      .from('asked_questions')
+      .select('question_text')
+      .eq('user_id', userId)
+      .eq('sector', sector)
+      .order('asked_at', { ascending: false })
+      .limit(50)
+    return (data || []).map(q => q.question_text)
+  } catch {
+    return []
+  }
+}
+
+// ── saveAskedQuestion — persist a question so it is never repeated ────────────
+export const saveAskedQuestion = async (userId, sector, questionText) => {
+  if (!userId || !questionText?.trim()) return
+  const hash = btoa(questionText.slice(0, 50))
+  try {
+    await supabase.from('asked_questions').insert({
+      user_id: userId,
+      sector,
+      question_hash: hash,
+      question_text: questionText,
+    })
+  } catch {
+    // non-critical — silent fail
+  }
+}
+
+// Sector → default exam name mapping for syllabus lookup
+const SECTOR_EXAM_MAP = {
+  government: 'UPSC Civil Services',
+  banking:    'IBPS PO',
+  engineering:'GATE Mechanical',
+  medical:    'NEET PG',
+  students:   'CET Maharashtra',
+  business:   'CAT',
+}
+
+// Fetch official syllabus from Supabase for a given sector
+async function fetchSyllabusContext(sector) {
+  const examName = SECTOR_EXAM_MAP[sector]
+  if (!examName) return null
+  try {
+    const { data } = await supabase
+      .from('sector_syllabus')
+      .select('syllabus_content, paper_structure, topic_weightage')
+      .eq('sector', sector)
+      .eq('exam_name', examName)
+      .single()
+    return data || null
+  } catch {
+    return null
+  }
 }
 
 async function callClaude({ system, messages, maxTokens = 1024, model = SONNET }) {
@@ -206,12 +278,24 @@ async function callClaude({ system, messages, maxTokens = 1024, model = SONNET }
 }
 
 // ── startInterview — returns first question text ──────────────────────────────
-export async function startInterview({ role, interviewType, companyFocus, resumeText, sector, state, studentProfile, totalQuestions = 10 }) {
+export async function startInterview({ role, interviewType, companyFocus, resumeText, sector, state, studentProfile, totalQuestions = 10, userId }) {
   const activeSector = sector || 'it_tech'
   const activeState  = state || 'maharashtra'
   const profile      = { resumeText, ...studentProfile }
 
-  const system = buildSectorPrompt(activeSector, role, interviewType, companyFocus, activeState, profile, totalQuestions)
+  // Fetch previous questions and syllabus in parallel
+  const [previousQuestions, syllabusData] = await Promise.all([
+    getPreviousQuestions(userId, activeSector),
+    fetchSyllabusContext(activeSector),
+  ])
+
+  // Build prompt with previous questions baked into baseRules
+  let system = buildSectorPrompt(activeSector, role, interviewType, companyFocus, activeState, profile, totalQuestions, previousQuestions)
+
+  // Append official syllabus context if available
+  if (syllabusData) {
+    system += `\n\nOFFICIAL SYLLABUS CONTEXT:\n${syllabusData.syllabus_content}\n\nPAPER STRUCTURE:\n${syllabusData.paper_structure}\n\nTOPIC WEIGHTAGE:\n${JSON.stringify(syllabusData.topic_weightage)}\n\nGenerate questions strictly following this official syllabus and weightage.\nHigher weightage topics must appear more.\nNever ask questions outside this syllabus.`
+  }
 
   return callClaude({
     model:     HAIKU,
@@ -235,14 +319,17 @@ export async function evaluateAnswer({
 
   const isStudents = activeSector === 'students'
   const jsonShape  = isStudents
-    ? `{"score":7,"good":"...","missing":"...","ideal":"...","encouragement":"...","next_question":"..."}`
-    : `{"score":7,"good":"...","missing":"...","ideal":"...","star_breakdown":{"situation":"present","task":"present","action":"present","result":"missing"},"next_question":""}`
+    ? `{"score":7,"good":"...","missing":"...","ideal":"...","correct_answer":"complete authoritative answer in 3-5 sentences","topic":"exact topic name","improvement_tip":"one specific actionable tip","encouragement":"...","next_question":"..."}`
+    : `{"score":7,"good":"...","missing":"...","ideal":"...","correct_answer":"complete authoritative answer in 3-5 sentences","topic":"exact topic name","improvement_tip":"one specific actionable tip","star_breakdown":{"situation":"present","task":"present","action":"present","result":"missing"},"next_question":""}`
 
   const system = `${basePrompt}
 
 Evaluate the answer. Respond ONLY with this JSON (no other text):
 ${jsonShape}
 For non-behavioral questions set star_breakdown values to "N/A".
+correct_answer must be complete accurate and based on official sources suitable for exam standard.
+topic must be the exact syllabus topic name like "Medieval History" or "RBI Monetary Policy".
+improvement_tip must be one specific actionable tip to improve next time.
 Question ${questionNumber} of ${totalQuestions}.${questionNumber === totalQuestions ? ' LAST question — set next_question to "".' : ''}`
 
   const recentHistory = conversationHistory.slice(-6)
@@ -250,25 +337,45 @@ Question ${questionNumber} of ${totalQuestions}.${questionNumber === totalQuesti
 
   const raw = await callClaude({ system, messages, maxTokens: 800, model: HAIKU })
 
-  try {
-    const match = raw.match(/\{[\s\S]*\}/)
-    if (!match) throw new Error('No JSON found')
-    return JSON.parse(match[0])
-  } catch {
+  const parseFeedback = (text) => {
+    const match = text.match(/\{[\s\S]*\}/)
+    if (!match) return null
+    try { return JSON.parse(match[0]) } catch { return null }
+  }
+
+  let feedback = parseFeedback(raw)
+
+  // First retry: JSON parse failed
+  if (!feedback) {
     const retry = await callClaude({
       system,
       messages: [...messages, { role: 'assistant', content: raw }, { role: 'user', content: 'Respond with only the JSON object.' }],
       maxTokens: 800,
       model: HAIKU,
     })
-    try {
-      const match = retry.match(/\{[\s\S]*\}/)
-      if (!match) throw new Error('No JSON on retry')
-      return JSON.parse(match[0])
-    } catch {
-      return { score: 5, good: 'Answer received.', missing: 'Could not parse feedback.', ideal: '', star_breakdown: { situation: 'N/A', task: 'N/A', action: 'N/A', result: 'N/A' }, next_question: '' }
+    feedback = parseFeedback(retry)
+    if (!feedback) {
+      return { score: 5, good: 'Answer received.', missing: 'Could not parse feedback.', ideal: '', correct_answer: '', topic: '', improvement_tip: '', star_breakdown: { situation: 'N/A', task: 'N/A', action: 'N/A', result: 'N/A' }, next_question: '' }
     }
   }
+
+  // Second retry: next_question missing mid-session
+  if (!feedback.next_question?.trim() && questionNumber < totalQuestions) {
+    const retryQ = await callClaude({
+      system,
+      messages: [
+        ...messages,
+        { role: 'assistant', content: JSON.stringify(feedback) },
+        { role: 'user', content: `You forgot next_question. This is question ${questionNumber} of ${totalQuestions}. Return the same JSON but with a non-empty next_question for question ${questionNumber + 1}.` },
+      ],
+      maxTokens: 800,
+      model: HAIKU,
+    })
+    const retried = parseFeedback(retryQ)
+    if (retried?.next_question?.trim()) return retried
+  }
+
+  return feedback
 }
 
 // ── analyzeResume ─────────────────────────────────────────────────────────────

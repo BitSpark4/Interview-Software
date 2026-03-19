@@ -8,7 +8,7 @@ export default function PublicRoute({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <Spinner size={24} color="border-emerald-500" />
+        <Spinner size={24} color="border-blue-500" />
       </div>
     )
   }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Menu } from 'lucide-react'
+import { List } from '@phosphor-icons/react'
 import Sidebar from './Sidebar'
 
 const COLLAPSED_KEY = 'sidebar_collapsed'
@@ -39,7 +39,7 @@ export default function AppLayout({ children }) {
           onClick={() => setMobileOpen(true)}
           className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
         >
-          <Menu size={22} />
+          <List size={22} />
         </button>
         <span className="ml-3 text-[#F9FAFB] font-bold text-base">InterviewIQ</span>
       </div>

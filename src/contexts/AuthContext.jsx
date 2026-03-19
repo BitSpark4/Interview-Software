@@ -84,7 +84,7 @@ export function AuthProvider({ children }) {
     try {
       const { data } = await supabase
         .from('users')
-        .select('id, email, name, plan, interviews_used, total_sessions, average_score, streak_count, resume_url, resume_filename, resume_uploaded_at, skills, target_role, created_at, is_admin, ats_score, ats_feedback, ats_analyzed_at')
+        .select('id, email, name, plan, interviews_used, total_sessions, average_score, streak_count, resume_url, resume_filename, resume_uploaded_at, skills, target_role, created_at, is_admin, ats_score, ats_feedback, ats_analyzed_at, primary_sector, career_goal, last_active_sector, onboarding_complete, last_login_at, last_login_device')
         .eq('id', userId)
         .single()
       if (mounted.current) setUserProfile(data ?? null)
@@ -111,23 +111,39 @@ export function AuthProvider({ children }) {
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw new Error('Invalid email or password. Please try again.')
-    // Set user immediately so ProtectedRoute doesn't redirect back to /auth
-    // before onAuthStateChange fires. onAuthStateChange will also fire shortly
-    // after and is a no-op because user id matches lastFetchedUserId.
     if (data?.user) {
       setUser(data.user)
       lastFetchedUserId.current = data.user.id
       fetchProfile(data.user.id)
+      // Single-session: generate token, store in DB + localStorage
+      try {
+        const sessionToken = crypto.randomUUID()
+        const deviceInfo   = navigator.userAgent.slice(0, 100)
+        await supabase.from('users').update({
+          active_session_token: sessionToken,
+          last_login_at:        new Date().toISOString(),
+          last_login_device:    deviceInfo,
+        }).eq('id', data.user.id)
+        localStorage.setItem('interviewiq-session-token', sessionToken)
+      } catch {
+        // Non-blocking — don't prevent login if this fails
+      }
     }
     navigate('/dashboard')
   }
 
   async function signOut() {
     try {
-      // Clear all cached session data
       sessionStorage.clear()
       localStorage.removeItem('interviewiq_auth')
-
+      localStorage.removeItem('interviewiq-session-token')
+      // Clear session token in DB so no stale validation fires
+      const currentUser = user
+      if (currentUser) {
+        await supabase.from('users')
+          .update({ active_session_token: '' })
+          .eq('id', currentUser.id)
+      }
       await supabase.auth.signOut()
     } catch (err) {
       console.error('signOut error:', err)
@@ -141,7 +157,7 @@ export function AuthProvider({ children }) {
 
   async function refreshProfile() {
     const { data: { user: currentUser } } = await supabase.auth.getUser()
-    if (currentUser) fetchProfile(currentUser.id)
+    if (currentUser) await fetchProfile(currentUser.id)
   }
 
   return (

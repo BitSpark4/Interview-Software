@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Crown, Check, Zap, Lock, ChevronDown, ChevronUp } from 'lucide-react'
+import { Crown, Check, Lightning, Lock, CaretDown, CaretUp } from '@phosphor-icons/react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import ErrorMessage from '../components/ErrorMessage'
@@ -51,13 +51,13 @@ export default function Upgrade() {
       <AppLayout>
         <div className="flex items-center justify-center min-h-[70vh] px-4">
           <div className="text-center max-w-sm">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-5">
-              <Crown size={36} className="text-emerald-400" />
+            <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-5">
+              <Crown size={36} className="text-amber-400" />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">You're Pro now!</h1>
             <p className="text-gray-400 text-sm mb-8">Unlimited interviews unlocked. Go practice.</p>
-            <Link to="/dashboard" className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-3.5 rounded-xl transition-colors">
-              <Zap size={16} /> Go to Dashboard
+            <Link to="/dashboard" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-3.5 rounded-xl transition-colors">
+              <Lightning size={16} /> Go to Dashboard
             </Link>
           </div>
         </div>
@@ -71,25 +71,25 @@ export default function Upgrade() {
 
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Crown size={24} className="text-emerald-400" /> Upgrade to Pro
+            <Crown size={24} className="text-amber-400" /> Upgrade to Pro
           </h1>
           <p className="text-gray-500 text-sm mt-1">Unlock unlimited practice and AI-powered coaching</p>
         </div>
 
         {/* Already Pro banner */}
         {isPro && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-5 flex items-center gap-3">
-            <Crown size={20} className="text-emerald-400 shrink-0" />
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-5 flex items-center gap-3">
+            <Crown size={20} className="text-amber-400 shrink-0" />
             <div>
-              <p className="text-emerald-400 font-semibold">You're already on Pro</p>
+              <p className="text-amber-400 font-semibold">You're already on Pro</p>
               <p className="text-gray-400 text-sm">Enjoy unlimited interviews.</p>
             </div>
           </div>
         )}
 
         {/* Pricing card */}
-        <div className="bg-gray-900 border-2 border-emerald-500/50 rounded-xl p-6 relative">
-          <div className="absolute -top-3 left-6 bg-emerald-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
+        <div className="bg-gray-900 border-2 border-amber-500/50 rounded-xl p-6 relative">
+          <div className="absolute -top-3 left-6 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
             MOST POPULAR
           </div>
 
@@ -103,7 +103,7 @@ export default function Upgrade() {
           <ul className="space-y-3 mb-8">
             {FEATURES.map(f => (
               <li key={f} className="flex items-start gap-2.5 text-sm text-gray-300">
-                <Check size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <Check size={16} className="text-blue-400 shrink-0 mt-0.5" />
                 {f}
               </li>
             ))}
@@ -120,9 +120,9 @@ export default function Upgrade() {
               type="button"
               onClick={handlePayment}
               disabled={loading}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
             >
-              {loading ? <Spinner size={16} color="border-black" /> : <Zap size={16} />}
+              {loading ? <Spinner size={16} color="border-black" /> : <Lightning size={16} />}
               {loading ? 'Processing…' : 'Pay ₹199 — Upgrade Now'}
             </button>
           )}
@@ -147,7 +147,7 @@ export default function Upgrade() {
                   className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-800/50 transition-colors"
                 >
                   <p className="text-gray-300 text-sm font-medium">{faq.q}</p>
-                  {openFaq === i ? <ChevronUp size={16} className="text-gray-500 shrink-0" /> : <ChevronDown size={16} className="text-gray-500 shrink-0" />}
+                  {openFaq === i ? <CaretUp size={16} className="text-gray-500 shrink-0" /> : <CaretDown size={16} className="text-gray-500 shrink-0" />}
                 </button>
                 {openFaq === i && (
                   <div className="px-5 pb-4 border-t border-gray-800">

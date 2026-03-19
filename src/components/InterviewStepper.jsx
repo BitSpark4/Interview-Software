@@ -24,9 +24,9 @@ export default function InterviewStepper({ currentStep, steps }) {
                 className="h-1 w-full rounded-full transition-all duration-300"
                 style={{
                   background: isCompleted
-                    ? '#22C55E'
+                    ? '#2563EB'
                     : isActive
-                    ? 'linear-gradient(90deg, #22C55E 0%, #166534 100%)'
+                    ? 'linear-gradient(90deg, #2563EB 0%, #1D4ED8 100%)'
                     : '#1F2937',
                   boxShadow: isActive ? '0 0 8px rgba(34,197,94,0.4)' : 'none',
                 }}
@@ -37,7 +37,7 @@ export default function InterviewStepper({ currentStep, steps }) {
                 {isCompleted ? (
                   <span
                     className="flex items-center justify-center shrink-0 rounded-full"
-                    style={{ width: 16, height: 16, background: '#22C55E' }}
+                    style={{ width: 16, height: 16, background: '#2563EB' }}
                   >
                     <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
                       <path d="M1.5 4.5L3.5 6.5L7.5 2.5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -48,8 +48,8 @@ export default function InterviewStepper({ currentStep, steps }) {
                     className="flex items-center justify-center shrink-0 rounded-full font-mono font-bold text-[9px] transition-all duration-200"
                     style={{
                       width: 16, height: 16,
-                      background: isActive ? '#22C55E' : '#1F2937',
-                      color: isActive ? '#000' : '#4B5563',
+                      background: isActive ? '#2563EB' : '#1F2937',
+                      color: isActive ? '#fff' : '#4B5563',
                       border: isActive ? 'none' : '1px solid #374151',
                     }}
                   >
@@ -60,7 +60,7 @@ export default function InterviewStepper({ currentStep, steps }) {
                 <span
                   className="text-xs font-medium truncate transition-colors duration-200"
                   style={{
-                    color: isCompleted ? '#22C55E' : isActive ? '#F9FAFB' : '#4B5563',
+                    color: isCompleted ? '#2563EB' : isActive ? '#F9FAFB' : '#4B5563',
                     fontFamily: isActive ? 'inherit' : 'inherit',
                   }}
                 >

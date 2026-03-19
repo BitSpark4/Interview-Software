@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle, X } from 'lucide-react'
+import { CheckCircle, X } from '@phosphor-icons/react'
 
 export default function Toast({ message, subText, onClose, duration = 5000 }) {
   const [visible, setVisible] = useState(false)
@@ -25,8 +25,8 @@ export default function Toast({ message, subText, onClose, duration = 5000 }) {
         zIndex: 9999,
         minWidth: 300,
         background: '#111827',
-        border: '1px solid rgba(34,197,94,0.3)',
-        borderLeft: '4px solid #22C55E',
+        border: '1px solid rgba(37,99,235,0.3)',
+        borderLeft: '4px solid #2563EB',
         borderRadius: 12,
         padding: '14px 18px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
@@ -46,7 +46,7 @@ export default function Toast({ message, subText, onClose, duration = 5000 }) {
       </button>
 
       <div className="flex items-center gap-2.5" style={{ marginBottom: subText ? 4 : 0 }}>
-        <CheckCircle size={18} color="#22C55E" />
+        <CheckCircle size={18} color="#2563EB" />
         <p style={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', margin: 0 }}>{message}</p>
       </div>
 

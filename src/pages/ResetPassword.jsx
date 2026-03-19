@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LockKeyhole, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react'
+import { Lock, CheckCircle, XCircle, Eye, EyeSlash } from '@phosphor-icons/react'
 import Spinner from '../components/Spinner'
 import { supabase } from '../lib/supabase'
 
@@ -80,7 +80,7 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0B0F19' }}>
         <div style={CARD} className="flex flex-col items-center gap-4">
-          <Spinner size={28} color="border-emerald-500" />
+          <Spinner size={28} color="border-blue-500" />
           <p style={{ fontSize: 14, color: '#9CA3AF' }}>Verifying reset link…</p>
         </div>
       </div>
@@ -103,9 +103,9 @@ export default function ResetPassword() {
           <button
             onClick={() => navigate('/auth?mode=forgot')}
             className="w-full flex items-center justify-center font-semibold transition-all duration-200"
-            style={{ height: 44, background: '#22C55E', color: '#000', fontSize: 14, fontWeight: 600, borderRadius: 10, border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = '#16A34A'}
-            onMouseLeave={e => e.currentTarget.style.background = '#22C55E'}
+            style={{ height: 44, background: '#2563EB', color: '#fff', fontSize: 14, fontWeight: 600, borderRadius: 10, border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+            onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
           >
             Request new reset link
           </button>
@@ -120,7 +120,7 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#0B0F19' }}>
         <div style={CARD} className="text-center">
           <div style={{ animation: 'scaleIn 0.4s ease' }}>
-            <CheckCircle size={64} color="#22C55E" style={{ margin: '0 auto 20px' }} />
+            <CheckCircle size={64} color="#2563EB" style={{ margin: '0 auto 20px' }} />
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#F9FAFB', marginBottom: 12 }}>
             Password updated! 🎉
@@ -135,9 +135,9 @@ export default function ResetPassword() {
           <button
             onClick={() => navigate('/dashboard')}
             className="w-full flex items-center justify-center font-semibold transition-all duration-200"
-            style={{ height: 44, background: '#22C55E', color: '#000', fontSize: 14, fontWeight: 600, borderRadius: 10, border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => e.currentTarget.style.background = '#16A34A'}
-            onMouseLeave={e => e.currentTarget.style.background = '#22C55E'}
+            style={{ height: 44, background: '#2563EB', color: '#fff', fontSize: 14, fontWeight: 600, borderRadius: 10, border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+            onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
           >
             Go to Dashboard →
           </button>
@@ -159,7 +159,7 @@ export default function ResetPassword() {
             background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <LockKeyhole size={28} color="#22C55E" />
+            <Lock size={28} color="#2563EB" />
           </div>
         </div>
 
@@ -191,12 +191,12 @@ export default function ResetPassword() {
                   fontSize: 14, color: '#F9FAFB', outline: 'none',
                   boxSizing: 'border-box',
                 }}
-                onFocus={e => e.target.style.borderColor = '#22C55E'}
+                onFocus={e => e.target.style.borderColor = '#2563EB'}
                 onBlur={e => e.target.style.borderColor = newPw.length > 0 ? '#4B5563' : '#374151'}
               />
               <button type="button" onClick={() => setShowNew(v => !v)}
                 style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }}>
-                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showNew ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
             </div>
 
@@ -231,7 +231,7 @@ export default function ResetPassword() {
                 required
                 style={{
                   width: '100%', height: 44, background: '#1F2937',
-                  border: `1px solid ${pwMismatch ? '#EF4444' : pwMatch ? '#22C55E' : '#374151'}`,
+                  border: `1px solid ${pwMismatch ? '#EF4444' : pwMatch ? '#2563EB' : '#374151'}`,
                   borderRadius: 8, padding: '0 44px 0 14px',
                   fontSize: 14, color: '#F9FAFB', outline: 'none',
                   boxSizing: 'border-box',
@@ -239,15 +239,15 @@ export default function ResetPassword() {
               />
               <button type="button" onClick={() => setShowConfirm(v => !v)}
                 style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: '#6B7280', background: 'none', border: 'none', cursor: 'pointer' }}>
-                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showConfirm ? <EyeSlash size={16} /> : <Eye size={16} />}
               </button>
             </div>
 
             {/* Match indicator */}
             {pwMatch && (
               <div className="flex items-center gap-1" style={{ marginTop: 6 }}>
-                <CheckCircle size={14} color="#22C55E" />
-                <p style={{ fontSize: 12, color: '#22C55E', margin: 0 }}>Passwords match</p>
+                <CheckCircle size={14} color="#2563EB" />
+                <p style={{ fontSize: 12, color: '#2563EB', margin: 0 }}>Passwords match</p>
               </div>
             )}
             {pwMismatch && (
@@ -265,13 +265,13 @@ export default function ResetPassword() {
             className="w-full flex items-center justify-center gap-2 transition-all duration-200"
             style={{
               height: 48, borderRadius: 10, border: 'none',
-              background: canSubmit ? '#22C55E' : '#374151',
+              background: canSubmit ? '#2563EB' : '#374151',
               color: canSubmit ? '#000' : '#6B7280',
               fontSize: 15, fontWeight: 700,
               cursor: canSubmit ? 'pointer' : 'not-allowed',
             }}
-            onMouseEnter={e => { if (canSubmit) e.currentTarget.style.background = '#16A34A' }}
-            onMouseLeave={e => { if (canSubmit) e.currentTarget.style.background = '#22C55E' }}
+            onMouseEnter={e => { if (canSubmit) e.currentTarget.style.background = '#1D4ED8' }}
+            onMouseLeave={e => { if (canSubmit) e.currentTarget.style.background = '#2563EB' }}
           >
             {loading ? <><Spinner size={16} color="border-gray-400" /> Updating password…</> : 'Update Password'}
           </button>

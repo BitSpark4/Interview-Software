@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Mail, MailCheck, AlertTriangle, CheckCircle, ChevronLeft, KeyRound, Clock } from 'lucide-react'
+import { Envelope, EnvelopeSimple, Warning, CheckCircle, CaretLeft, Key, Clock } from '@phosphor-icons/react'
 import { useAuth } from '../hooks/useAuth'
 import Spinner from '../components/Spinner'
 import Toast from '../components/Toast'
@@ -13,12 +13,12 @@ import { getErrorMessage } from '../utils/errorHandler'
 function BrandPanel() {
   return (
     <div className="hidden md:flex flex-col justify-between w-2/5 bg-gray-900 border-r border-gray-800 p-10">
-      <span className="font-mono font-bold text-emerald-400 text-lg tracking-tight">InterviewIQ</span>
+      <span className="font-mono font-bold text-blue-400 text-lg tracking-tight">InterviewIQ</span>
       <div>
         <p className="font-mono font-bold text-white text-2xl leading-snug mb-4">
           Practice until<br />you're ready.
         </p>
-        <p className="text-gray-500 text-sm leading-relaxed border-l-2 border-emerald-500 pl-4">
+        <p className="text-gray-500 text-sm leading-relaxed border-l-2 border-blue-500 pl-4">
           "I failed 4 interviews before using InterviewIQ. After 2 weeks of
           practice, I got an offer from a product company."
           <br /><br />
@@ -75,7 +75,7 @@ function SignupSuccessScreen({ email, onBack }) {
           border: '1px solid rgba(34,197,94,0.25)',
         }}
       >
-        <Mail size={32} color="#22C55E" />
+        <Envelope size={32} color="#2563EB" />
       </div>
 
       {/* Title */}
@@ -105,7 +105,7 @@ function SignupSuccessScreen({ email, onBack }) {
         marginBottom: 24, textAlign: 'left',
       }}>
         <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
-          <AlertTriangle size={18} color="#F59E0B" />
+          <Warning size={18} color="#F59E0B" />
           <span style={{ fontSize: 14, fontWeight: 700, color: '#F59E0B' }}>Check your Spam folder</span>
         </div>
         <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, margin: 0 }}>
@@ -123,7 +123,7 @@ function SignupSuccessScreen({ email, onBack }) {
           <div key={s.n} className="flex items-center gap-3" style={{ marginBottom: 10 }}>
             <span style={{
               width: 22, height: 22, borderRadius: '50%',
-              background: '#22C55E', color: '#000',
+              background: '#2563EB', color: '#fff',
               fontSize: 11, fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               flexShrink: 0,
@@ -143,12 +143,12 @@ function SignupSuccessScreen({ email, onBack }) {
         style={{
           height: 40, borderRadius: 8, fontSize: 13, fontWeight: 500,
           background: 'transparent',
-          border: `1px solid ${resent ? 'rgba(34,197,94,0.3)' : '#374151'}`,
-          color: resent ? '#22C55E' : countdown > 0 ? '#4B5563' : '#9CA3AF',
+          border: `1px solid ${resent ? 'rgba(37,99,235,0.3)' : '#374151'}`,
+          color: resent ? '#2563EB' : countdown > 0 ? '#4B5563' : '#9CA3AF',
           cursor: resending || countdown > 0 ? 'not-allowed' : 'pointer',
         }}
         onMouseEnter={e => { if (!resending && !countdown) { e.currentTarget.style.background = '#1F2937'; e.currentTarget.style.color = '#F9FAFB' } }}
-        onMouseLeave={e => { if (!resending && !countdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = resent ? '#22C55E' : '#9CA3AF' } }}
+        onMouseLeave={e => { if (!resending && !countdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = resent ? '#2563EB' : '#9CA3AF' } }}
       >
         {resending ? (
           <><Spinner size={14} color="border-gray-400" /> Sending…</>
@@ -197,7 +197,7 @@ function UnverifiedEmailBox({ email }) {
       borderRadius: 10, padding: '14px 16px', marginBottom: 16,
     }}>
       <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
-        <AlertTriangle size={16} color="#F59E0B" />
+        <Warning size={16} color="#F59E0B" />
         <span style={{ fontSize: 14, fontWeight: 600, color: '#F59E0B' }}>Please verify your email first</span>
       </div>
       <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, margin: '0 0 10px 0' }}>
@@ -208,7 +208,7 @@ function UnverifiedEmailBox({ email }) {
         onClick={handleResend}
         disabled={resending}
         style={{
-          fontSize: 13, fontWeight: 500, color: resent ? '#9CA3AF' : '#22C55E',
+          fontSize: 13, fontWeight: 500, color: resent ? '#9CA3AF' : '#2563EB',
           background: 'none', border: 'none', cursor: resending ? 'default' : 'pointer', padding: 0,
         }}
         className="hover:underline"
@@ -250,7 +250,7 @@ function ForgotSuccessScreen({ email, onBack }) {
       {/* Icon */}
       <div className="flex items-center justify-center mx-auto mb-5"
         style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)' }}>
-        <MailCheck size={28} color="#22C55E" />
+        <EnvelopeSimple size={28} color="#2563EB" />
       </div>
 
       <h1 style={{ fontSize: 22, fontWeight: 700, color: '#F9FAFB', marginBottom: 10 }}>Check your email! 📬</h1>
@@ -264,7 +264,7 @@ function ForgotSuccessScreen({ email, onBack }) {
       {/* Spam warning */}
       <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 12, padding: '14px 18px', marginBottom: 20, textAlign: 'left' }}>
         <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
-          <AlertTriangle size={16} color="#F59E0B" />
+          <Warning size={16} color="#F59E0B" />
           <span style={{ fontSize: 14, fontWeight: 600, color: '#F59E0B' }}>Check your Spam folder too</span>
         </div>
         <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, margin: 0 }}>
@@ -285,12 +285,12 @@ function ForgotSuccessScreen({ email, onBack }) {
         className="w-full flex items-center justify-center gap-2 transition-all duration-150"
         style={{
           height: 40, borderRadius: 8, fontSize: 13, fontWeight: 500, background: 'transparent',
-          border: `1px solid ${resent ? 'rgba(34,197,94,0.3)' : '#374151'}`,
-          color: resent ? '#22C55E' : countdown > 0 ? '#4B5563' : '#9CA3AF',
+          border: `1px solid ${resent ? 'rgba(37,99,235,0.3)' : '#374151'}`,
+          color: resent ? '#2563EB' : countdown > 0 ? '#4B5563' : '#9CA3AF',
           cursor: resending || countdown > 0 ? 'not-allowed' : 'pointer',
         }}
         onMouseEnter={e => { if (!resending && !countdown) { e.currentTarget.style.background = '#1F2937'; e.currentTarget.style.color = '#F9FAFB' } }}
-        onMouseLeave={e => { if (!resending && !countdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = resent ? '#22C55E' : '#9CA3AF' } }}
+        onMouseLeave={e => { if (!resending && !countdown) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = resent ? '#2563EB' : '#9CA3AF' } }}
       >
         {resending ? <><Spinner size={13} color="border-gray-400" /> Sending…</> :
          resent && countdown > 0 ? `✓ Resent! Resend again in ${countdown}s` :
@@ -343,13 +343,13 @@ function ForgotPasswordScreen({ onBack }) {
         style={{ fontSize: 13, color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 24, padding: 0 }}
         onMouseEnter={e => e.currentTarget.style.color = '#F9FAFB'}
         onMouseLeave={e => e.currentTarget.style.color = '#9CA3AF'}>
-        <ChevronLeft size={16} /> Back to Sign In
+        <CaretLeft size={16} /> Back to Sign In
       </button>
 
       {/* Icon */}
       <div className="flex justify-center mb-4">
         <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <KeyRound size={28} color="#3B82F6" />
+          <Key size={28} color="#3B82F6" />
         </div>
       </div>
 
@@ -370,7 +370,7 @@ function ForgotPasswordScreen({ onBack }) {
             border: `1px solid ${error ? '#EF4444' : '#374151'}`, borderRadius: 8,
             padding: '0 14px', fontSize: 14, color: '#F9FAFB', outline: 'none', boxSizing: 'border-box',
           }}
-          onFocus={e => e.target.style.borderColor = '#22C55E'}
+          onFocus={e => e.target.style.borderColor = '#2563EB'}
           onBlur={e => e.target.style.borderColor = error ? '#EF4444' : '#374151'}
         />
         {error && <p style={{ fontSize: 13, color: '#EF4444', marginTop: 6 }}>{error}</p>}
@@ -380,12 +380,12 @@ function ForgotPasswordScreen({ onBack }) {
           className="w-full flex items-center justify-center gap-2 transition-all duration-200"
           style={{
             height: 48, marginTop: 16, borderRadius: 10, border: 'none',
-            background: loading ? '#374151' : '#22C55E',
+            background: loading ? '#374151' : '#2563EB',
             color: loading ? '#6B7280' : '#000',
             fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
           }}
           onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#16A34A' }}
-          onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#22C55E' }}
+          onMouseLeave={e => { if (!loading) e.currentTarget.style.background = '#2563EB' }}
         >
           {loading ? <><Spinner size={16} color="border-gray-400" /> Sending…</> : 'Send Reset Link'}
         </button>
@@ -498,15 +498,15 @@ export default function Auth() {
 
             {/* Mobile logo */}
             <div className="mb-4 md:hidden">
-              <span className="font-mono font-bold text-emerald-400">InterviewIQ</span>
+              <span className="font-mono font-bold text-blue-400">InterviewIQ</span>
             </div>
 
             {/* Email verified banner */}
             {isVerified && mode === 'login' && (
-              <div className="flex items-start gap-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-4 py-3 mb-6">
-                <CheckCircle size={18} color="#22C55E" className="shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 bg-blue-500/10 border border-blue-500/30 rounded-lg px-4 py-3 mb-6">
+                <CheckCircle size={18} color="#2563EB" className="shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-emerald-400 text-sm font-medium">Email verified successfully!</p>
+                  <p className="text-blue-400 text-sm font-medium">Email verified successfully!</p>
                   <p className="text-gray-500 text-xs mt-0.5">Sign in below to start practicing.</p>
                 </div>
               </div>
@@ -529,7 +529,7 @@ export default function Auth() {
                   <input
                     type="text" value={name} onChange={e => setName(e.target.value)}
                     placeholder="Rahul Sharma" required minLength={2}
-                    className="w-full bg-gray-800 border border-gray-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-white rounded-lg px-4 py-3 text-sm outline-none transition-colors min-h-11"
+                    className="w-full bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white rounded-lg px-4 py-3 text-sm outline-none transition-colors min-h-11"
                   />
                 </div>
               )}
@@ -539,7 +539,7 @@ export default function Auth() {
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
                   placeholder={mode === 'signup' ? 'rahul@gmail.com' : 'your@email.com'} required
-                  className="w-full bg-gray-800 border border-gray-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-white rounded-lg px-4 py-3 text-sm outline-none transition-colors min-h-11"
+                  className="w-full bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white rounded-lg px-4 py-3 text-sm outline-none transition-colors min-h-11"
                 />
               </div>
 
@@ -551,7 +551,7 @@ export default function Auth() {
                     onChange={e => setPassword(e.target.value)}
                     placeholder={mode === 'signup' ? 'Min 6 characters' : 'Your password'}
                     required minLength={6}
-                    className="w-full bg-gray-800 border border-gray-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-white rounded-lg px-4 py-3 pr-12 text-sm outline-none transition-colors min-h-11"
+                    className="w-full bg-gray-800 border border-gray-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-white rounded-lg px-4 py-3 pr-12 text-sm outline-none transition-colors min-h-11"
                   />
                   <button
                     type="button" onClick={() => setShowPassword(v => !v)}
@@ -567,7 +567,7 @@ export default function Auth() {
                 <div className="flex justify-end" style={{ marginTop: -8 }}>
                   <button type="button" onClick={() => setParams({ mode: 'forgot' })}
                     className="hover:underline transition-colors"
-                    style={{ fontSize: 13, color: '#22C55E', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    style={{ fontSize: 13, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                     Forgot password?
                   </button>
                 </div>
@@ -577,7 +577,7 @@ export default function Auth() {
 
               <button
                 type="submit" disabled={loading}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors min-h-11"
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors min-h-11"
               >
                 {loading && <Spinner size={16} color="border-black" />}
                 {loading
@@ -589,13 +589,13 @@ export default function Auth() {
             <p className="text-gray-600 text-sm mt-6 text-center">
               {mode === 'signup' ? (
                 <>Already have an account?{' '}
-                  <button type="button" onClick={switchMode} className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                  <button type="button" onClick={switchMode} className="text-blue-400 hover:text-blue-300 transition-colors">
                     Sign in
                   </button>
                 </>
               ) : (
                 <>New here?{' '}
-                  <button type="button" onClick={switchMode} className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                  <button type="button" onClick={switchMode} className="text-blue-400 hover:text-blue-300 transition-colors">
                     Create free account
                   </button>
                 </>

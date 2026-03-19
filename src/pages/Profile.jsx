@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import {
-  User, BarChart2, Trophy, Flame, Target, Play,
-  FileText, Zap, ChevronRight, Upload, Pencil, Trash2,
-  Crown, Lock, CheckCircle, AlertCircle, FileSearch, RefreshCw, Settings,
-  Code2, Award,
-} from 'lucide-react'
+  UserCircle, ChartBar, Trophy, Lightning, Target, PlayCircle,
+  FileText, CaretRight, UploadSimple, PencilSimple, Trash,
+  Crown, Lock, CheckCircle, Warning, FileMagnifyingGlass, ArrowCounterClockwise, Gear,
+  Code, Medal,
+} from '@phosphor-icons/react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import { useAuth } from '../hooks/useAuth'
@@ -184,9 +184,9 @@ export default function Profile() {
 
   const stats = [
     { label: 'TOTAL SESSIONS', icon: Target,   iconColor: '#3B82F6', topBorder: '#3B82F6', value: userProfile?.total_sessions || 0 },
-    { label: 'AVG SCORE',      icon: BarChart2, iconColor: '#22C55E', topBorder: '#22C55E', value: avgScore ? avgScore.toFixed(1) : '—', valueColor: avgScore ? scoreColor(avgScore) : '#F9FAFB' },
+    { label: 'AVG SCORE',      icon: ChartBar,  iconColor: '#2563EB', topBorder: '#2563EB', value: avgScore ? avgScore.toFixed(1) : '—', valueColor: avgScore ? scoreColor(avgScore) : '#F9FAFB' },
     { label: 'BEST SCORE',     icon: Trophy,    iconColor: '#F59E0B', topBorder: '#F59E0B', value: bestScore ? bestScore.toFixed(1) : '—', valueColor: bestScore ? scoreColor(bestScore) : '#F9FAFB' },
-    { label: 'DAY STREAK',     icon: Flame,     iconColor: '#F97316', topBorder: '#F97316', value: userProfile?.streak_count || 0 },
+    { label: 'DAY STREAK',     icon: Lightning, iconColor: '#F97316', topBorder: '#F97316', value: userProfile?.streak_count || 0 },
   ]
 
   return (
@@ -203,8 +203,8 @@ export default function Profile() {
           >
             {/* Avatar */}
             <div
-              className="w-20 h-20 rounded-full flex items-center justify-center text-black font-bold text-3xl mb-4"
-              style={{ background: '#22C55E' }}
+              className="w-20 h-20 rounded-full flex items-center justify-center text-white font-bold text-3xl mb-4"
+              style={{ background: '#2563EB' }}
             >
               {initial}
             </div>
@@ -223,8 +223,8 @@ export default function Profile() {
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={saveName} disabled={savingName}
-                    className="text-[12px] font-semibold px-3 py-1 rounded-lg text-black"
-                    style={{ background: '#22C55E' }}
+                    className="text-[12px] font-semibold px-3 py-1 rounded-lg text-white"
+                    style={{ background: '#2563EB' }}
                   >
                     {savingName ? '…' : 'Save'}
                   </button>
@@ -236,7 +236,7 @@ export default function Profile() {
               <div className="flex items-center gap-1.5 mb-1">
                 <p className="text-[18px] font-bold" style={{ color: '#F9FAFB' }}>{name}</p>
                 <button onClick={() => { setEditingName(true); setNameInput(name) }}>
-                  <Pencil size={13} color="#6B7280" />
+                  <PencilSimple size={13} color="#6B7280" />
                 </button>
               </div>
             )}
@@ -248,7 +248,7 @@ export default function Profile() {
             {isPro ? (
               <span
                 className="text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded mb-5"
-                style={{ background: '#22C55E', color: '#000' }}
+                style={{ background: '#2563EB', color: '#fff' }}
               >
                 + PRO PLAN
               </span>
@@ -258,7 +258,7 @@ export default function Profile() {
                 className="flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded mb-5"
                 style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
               >
-                <Zap size={11} /> Free Plan — Upgrade
+                <Lightning size={11} /> Free Plan — Upgrade
               </Link>
             )}
           </div>
@@ -299,7 +299,7 @@ export default function Profile() {
                   onClick={() => setChartRange(r)}
                   className="text-[12px] font-medium px-3 py-1 rounded-full transition-all duration-150"
                   style={chartRange === r
-                    ? { background: 'rgba(34,197,94,0.15)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }
+                    ? { background: 'rgba(37,99,235,0.15)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.3)' }
                     : { background: '#1F2937', color: '#6B7280', border: '1px solid #374151' }}
                 >
                   {r}
@@ -317,15 +317,15 @@ export default function Profile() {
                 <Tooltip
                   contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: '#9CA3AF' }}
-                  itemStyle={{ color: '#22C55E' }}
+                  itemStyle={{ color: '#2563EB' }}
                 />
-                <Line type="monotone" dataKey="score" stroke="#22C55E" strokeWidth={2}
-                  dot={{ fill: '#22C55E', r: 3 }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="score" stroke="#2563EB" strokeWidth={2}
+                  dot={{ fill: '#2563EB', r: 3 }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex flex-col items-center justify-center py-6 text-center gap-2" style={{ minHeight: 100 }}>
-              <BarChart2 size={28} color="#374151" />
+              <ChartBar size={28} color="#374151" />
               <p className="text-[13px]" style={{ color: '#6B7280' }}>
                 Complete {Math.max(0, 2 - chartData.length)} more interview{chartData.length < 1 ? 's' : ''} to see your chart
               </p>
@@ -333,11 +333,11 @@ export default function Profile() {
                 to="/interview/setup"
                 className="flex items-center gap-2 font-semibold transition-all duration-200"
                 style={{
-                  background: '#22C55E', color: '#000', fontSize: 12,
+                  background: '#2563EB', color: '#fff', fontSize: 12,
                   padding: '6px 16px', borderRadius: 8, marginTop: 2,
                 }}
               >
-                <Play size={12} fill="#000" /> Start Interview
+                <PlayCircle size={12} /> Start Interview
               </Link>
             </div>
           )}
@@ -351,7 +351,7 @@ export default function Profile() {
           {/* Left 40%: Skills */}
           <div style={{ padding: 24, width: '100%' }} className="lg:w-[40%]">
             <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
-              <Code2 size={16} color="#8B5CF6" />
+              <Code size={16} color="#8B5CF6" />
               <p style={{ fontSize: 15, fontWeight: 700, color: '#F9FAFB' }}>Skills Detected</p>
             </div>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>Extracted from your resume</p>
@@ -394,14 +394,14 @@ export default function Profile() {
               )
             })() : savedResume ? (
               <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
-                <Zap size={22} color="#8B5CF6" />
+                <Lightning size={22} color="#8B5CF6" />
                 <p style={{ fontSize: 13, color: '#6B7280' }}>Skills are being analyzed</p>
                 <button
                   onClick={() => refreshProfile?.()}
                   className="flex items-center gap-1.5 text-[12px] font-medium px-3 py-1.5 rounded-lg transition-all"
                   style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
                 >
-                  <RefreshCw size={12} /> Refresh
+                  <ArrowCounterClockwise size={12} /> Refresh
                 </button>
               </div>
             ) : (
@@ -412,7 +412,7 @@ export default function Profile() {
                   className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-3 py-1.5 rounded-lg"
                   style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}
                 >
-                  <Upload size={12} /> Upload Resume
+                  <UploadSimple size={12} /> Upload Resume
                   <input id="skills-resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
                 </label>
               </div>
@@ -426,7 +426,7 @@ export default function Profile() {
           {/* Right 60%: ATS Score */}
           <div style={{ padding: 24, width: '100%', position: 'relative', overflow: 'hidden' }} className="lg:w-[60%]">
             <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
-              <Award size={16} color="#22C55E" />
+              <Medal size={16} color="#F59E0B" />
               <p style={{ fontSize: 15, fontWeight: 700, color: '#F9FAFB' }}>Resume ATS Score</p>
             </div>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>How ATS-friendly your resume is</p>
@@ -443,20 +443,20 @@ export default function Profile() {
                     Get your ATS score and see exactly how to improve your resume.
                   </p>
                   <a href="/upgrade" className="flex items-center justify-center font-bold transition-all"
-                    style={{ height: 38, padding: '0 20px', background: '#22C55E', color: '#000', fontSize: 13, borderRadius: 8, textDecoration: 'none' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#16A34A'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#22C55E'}>
+                    style={{ height: 38, padding: '0 20px', background: '#2563EB', color: '#fff', fontSize: 13, borderRadius: 8, textDecoration: 'none' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}>
                     Upgrade to Pro — ₹199/month
                   </a>
                 </div>
               </div>
             ) : !savedResume ? (
               <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
-                <FileSearch size={28} color="#374151" />
+                <FileMagnifyingGlass size={28} color="#374151" />
                 <p style={{ fontSize: 13, color: '#6B7280' }}>Upload your resume to get ATS score</p>
                 <label htmlFor="ats-resume-upload" className="flex items-center gap-1.5 text-[12px] font-semibold cursor-pointer px-3 py-1.5 rounded-lg"
                   style={{ background: '#1F2937', border: '1px solid #374151', color: '#9CA3AF' }}>
-                  <Upload size={12} /> Upload Resume
+                  <UploadSimple size={12} /> Upload Resume
                   <input id="ats-resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
                 </label>
               </div>
@@ -470,7 +470,7 @@ export default function Profile() {
                     <p style={{ fontSize: 20, fontWeight: 700, color: atsRingColor(atsScore), marginBottom: 4 }}>{atsScore}/100</p>
                     {atsFeedback?.strengths?.slice(0, 2).map(s => (
                       <div key={s} className="flex items-start gap-1.5" style={{ marginBottom: 3 }}>
-                        <CheckCircle size={12} color="#22C55E" style={{ marginTop: 2, flexShrink: 0 }} />
+                        <CheckCircle size={12} color="#2563EB" style={{ marginTop: 2, flexShrink: 0 }} />
                         <p style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.4 }}>{s}</p>
                       </div>
                     ))}
@@ -514,7 +514,7 @@ export default function Profile() {
                       </div>
                     ))}
                     {!showAllTips && atsFeedback.improvements.length > 3 && (
-                      <button onClick={() => setShowAllTips(true)} style={{ fontSize: 11, color: '#22C55E', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                      <button onClick={() => setShowAllTips(true)} style={{ fontSize: 11, color: '#2563EB', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
                         Show {atsFeedback.improvements.length - 3} more
                       </button>
                     )}
@@ -546,7 +546,7 @@ export default function Profile() {
                   style={{ height: 32, fontSize: 12, color: reanalyzing ? '#4B5563' : '#9CA3AF', background: 'transparent', border: '1px solid #374151', padding: '0 12px', borderRadius: 8, cursor: reanalyzing ? 'not-allowed' : 'pointer', marginTop: 12 }}
                   onMouseEnter={e => { if (!reanalyzing) e.currentTarget.style.borderColor = '#4B5563' }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = '#374151' }}>
-                  <RefreshCw size={12} className={reanalyzing ? 'animate-spin' : ''} />
+                  <ArrowCounterClockwise size={12} className={reanalyzing ? 'animate-spin' : ''} />
                   {reanalyzing ? 'Analyzing…' : 'Reanalyze ATS Score'}
                 </button>
               </div>
@@ -555,8 +555,8 @@ export default function Profile() {
                 <p style={{ fontSize: 13, color: '#6B7280' }}>ATS analysis pending</p>
                 <button onClick={reanalyzeATS} disabled={reanalyzing}
                   className="flex items-center gap-2 font-semibold transition-all"
-                  style={{ height: 32, padding: '0 16px', background: '#22C55E', color: '#000', fontSize: 12, borderRadius: 8, border: 'none', cursor: 'pointer' }}>
-                  {reanalyzing ? <><RefreshCw size={12} className="animate-spin" /> Analyzing…</> : <>Analyze Now</>}
+                  style={{ height: 32, padding: '0 16px', background: '#2563EB', color: '#fff', fontSize: 12, borderRadius: 8, border: 'none', cursor: 'pointer' }}>
+                  {reanalyzing ? <><ArrowCounterClockwise size={12} className="animate-spin" /> Analyzing…</> : <>Analyze Now</>}
                 </button>
               </div>
             )}
@@ -583,7 +583,7 @@ export default function Profile() {
 
             {uploading ? (
               <div className="flex flex-col items-center gap-3 py-8">
-                <Spinner size={24} color="border-emerald-500" />
+                <Spinner size={24} color="border-blue-500" />
                 <p className="text-[13px]" style={{ color: '#9CA3AF' }}>Analyzing resume…</p>
                 <p className="text-[11px]" style={{ color: '#6B7280' }}>Detecting skills · Calculating ATS score</p>
               </div>
@@ -608,7 +608,7 @@ export default function Profile() {
                   className="flex items-center gap-1.5 text-[12px] font-medium cursor-pointer w-fit"
                   style={{ color: '#F59E0B' }}
                 >
-                  <Upload size={13} /> Replace resume
+                  <UploadSimple size={13} /> Replace resume
                   <input id="resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
                 </label>
               </div>
@@ -620,7 +620,7 @@ export default function Profile() {
                 onMouseEnter={e => e.currentTarget.style.borderColor = '#F59E0B'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#374151'}
               >
-                <Upload size={28} color="#F59E0B" />
+                <UploadSimple size={28} color="#F59E0B" />
                 <div>
                   <p className="text-[13px] font-medium" style={{ color: '#F9FAFB' }}>Upload your resume PDF</p>
                   <p className="text-[11px] mt-1" style={{ color: '#6B7280' }}>Get skill detection and ATS score · Max 5 MB</p>
@@ -636,7 +636,7 @@ export default function Profile() {
             style={{ background: '#111827', border: '1px solid #1F2937', minHeight: 180 }}
           >
             <div className="flex items-center gap-2 mb-1">
-              <Settings size={15} color="#6B7280" />
+              <Gear size={15} color="#6B7280" />
               <p className="text-[14px] font-semibold" style={{ color: '#F9FAFB' }}>Account</p>
             </div>
 
@@ -653,10 +653,31 @@ export default function Profile() {
                 <p className="text-[13px]" style={{ color: '#F9FAFB' }}>{isPro ? 'Pro Plan' : 'Free Plan'}</p>
               </div>
               {isPro
-                ? <span className="text-[11px] font-semibold" style={{ color: '#22C55E' }}>Active</span>
-                : <Link to="/upgrade" className="text-[12px] font-semibold px-3 py-1.5 rounded-lg text-black" style={{ background: '#22C55E' }}>Upgrade</Link>
+                ? <span className="text-[11px] font-semibold" style={{ color: '#2563EB' }}>Active</span>
+                : <Link to="/upgrade" className="text-[12px] font-semibold px-3 py-1.5 rounded-lg text-white" style={{ background: '#2563EB' }}>Upgrade</Link>
               }
             </div>
+
+            {/* Active Device */}
+            {userProfile?.last_login_device && (
+              <div style={{ borderBottom: '1px solid #1F2937', paddingBottom: 12 }}>
+                <p className="text-[11px] uppercase tracking-wider mb-1" style={{ color: '#6B7280' }}>Active Device</p>
+                <p className="text-[12px]" style={{ color: '#D1D5DB', wordBreak: 'break-all' }}>
+                  {userProfile.last_login_device.length > 60
+                    ? userProfile.last_login_device.slice(0, 60) + '…'
+                    : userProfile.last_login_device}
+                </p>
+                {userProfile.last_login_at && (
+                  <p className="text-[11px] mt-0.5" style={{ color: '#4B5563' }}>
+                    Last active:{' '}
+                    {new Date(userProfile.last_login_at).toLocaleString('en-IN', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Danger zone */}
             <div className="pt-1">
@@ -668,7 +689,7 @@ export default function Profile() {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <Trash2 size={13} /> Delete Account
+                <Trash size={13} /> Delete Account
               </button>
             </div>
           </div>

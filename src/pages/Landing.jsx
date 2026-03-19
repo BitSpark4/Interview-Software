@@ -51,14 +51,14 @@ export default function Landing() {
 
       {/* Nav */}
       <nav className="flex items-center justify-between px-4 py-5 border-b border-gray-800/60 max-w-5xl mx-auto">
-        <span className="font-mono font-bold text-emerald-400 tracking-tight text-lg">InterviewIQ</span>
+        <span className="font-mono font-bold text-blue-400 tracking-tight text-lg">InterviewIQ</span>
         <div className="flex items-center gap-4">
           <Link to="/auth?mode=login" className="text-gray-500 hover:text-white text-sm transition-colors">
             Sign in
           </Link>
           <Link
             to="/auth?mode=signup"
-            className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-sm px-4 py-2 rounded-lg transition-colors"
+            className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-4 py-2 rounded-lg transition-colors"
           >
             Start Free
           </Link>
@@ -107,8 +107,8 @@ export default function Landing() {
               backdropFilter: 'blur(8px)',
             }}
           >
-            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
               New
             </span>
             <span className="w-px h-3 bg-gray-700" />
@@ -139,7 +139,7 @@ export default function Landing() {
               Practice Interviews.
             </span>
             <span style={{
-              background: 'linear-gradient(135deg, #22C55E 0%, #86EFAC 40%, #22C55E 100%)',
+              background: 'linear-gradient(135deg, #2563EB 0%, #60A5FA 40%, #2563EB 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -164,18 +164,18 @@ export default function Landing() {
               to="/auth?mode=signup"
               className="group relative w-full sm:w-auto flex items-center justify-center gap-2 font-bold px-8 py-3.5 rounded-xl transition-all duration-200 min-h-11"
               style={{
-                background: '#22C55E',
-                color: '#000',
-                boxShadow: '0 0 0 0 rgba(34,197,94,0.4)',
+                background: '#2563EB',
+                color: '#fff',
+                boxShadow: '0 0 0 0 rgba(37,99,235,0.4)',
                 fontSize: 15,
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = '#16A34A'
-                e.currentTarget.style.boxShadow = '0 8px 30px rgba(34,197,94,0.3)'
+                e.currentTarget.style.background = '#1D4ED8'
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(37,99,235,0.3)'
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.background = '#22C55E'
-                e.currentTarget.style.boxShadow = '0 0 0 0 rgba(34,197,94,0.4)'
+                e.currentTarget.style.background = '#2563EB'
+                e.currentTarget.style.boxShadow = '0 0 0 0 rgba(37,99,235,0.4)'
               }}
             >
               Start Free — No Card
@@ -220,7 +220,7 @@ export default function Landing() {
             <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-mono">
               {['3 free/month', 'No credit card', 'Cancel anytime'].map(t => (
                 <span key={t} className="flex items-center gap-1 text-gray-600">
-                  <span className="text-emerald-600">✓</span> {t}
+                  <span className="text-blue-500">✓</span> {t}
                 </span>
               ))}
             </div>
@@ -247,7 +247,7 @@ export default function Landing() {
           {/* Fake session header */}
           <div className="flex items-center justify-between pb-3 border-b border-gray-800">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               <span className="text-gray-400 text-xs font-mono">Live Interview · Backend Developer · Q2 of 5</span>
             </div>
             <span className="font-mono text-xs text-gray-600">Mixed round</span>
@@ -259,8 +259,8 @@ export default function Landing() {
               {m.from === 'ai' ? (
                 <div className="max-w-[85%]">
                   <div className="flex items-center gap-1.5 mb-1">
-                    <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <span className="text-emerald-400 text-xs">AI</span>
+                    <div className="w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <span className="text-blue-400 text-xs">AI</span>
                     </div>
                     <span className="text-gray-600 text-xs font-mono">Claude</span>
                   </div>
@@ -269,7 +269,7 @@ export default function Landing() {
                   </div>
                 </div>
               ) : (
-                <div className="max-w-[75%] bg-emerald-500/10 border border-emerald-500/20 rounded-xl rounded-tr-none px-4 py-3">
+                <div className="max-w-[75%] bg-blue-500/10 border border-blue-500/20 rounded-xl rounded-tr-none px-4 py-3">
                   <p className="text-gray-200 text-sm leading-relaxed">{m.text}</p>
                 </div>
               )}
@@ -294,8 +294,8 @@ export default function Landing() {
                 <span className="text-red-400 text-xs mt-0.5 shrink-0">✗</span>
                 <p className="text-gray-400 text-sm">{problem}</p>
               </div>
-              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg px-4 py-3 flex items-start gap-2">
-                <span className="text-emerald-400 text-xs mt-0.5 shrink-0">✓</span>
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg px-4 py-3 flex items-start gap-2">
+                <span className="text-blue-400 text-xs mt-0.5 shrink-0">✓</span>
                 <p className="text-gray-300 text-sm">{fix}</p>
               </div>
             </div>
@@ -309,8 +309,8 @@ export default function Landing() {
         <div className="grid md:grid-cols-3 gap-5">
           {STEPS.map((step, i) => (
             <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-5 relative">
-              <div className="absolute -top-3 -left-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
-                <span className="text-black text-xs font-mono font-bold">{i + 1}</span>
+              <div className="absolute -top-3 -left-2 w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                <span className="text-white text-xs font-mono font-bold">{i + 1}</span>
               </div>
               <div className="text-3xl mb-3 mt-1">{step.icon}</div>
               <h3 className="font-mono font-bold text-white text-sm mb-2">{step.title}</h3>
@@ -330,7 +330,7 @@ export default function Landing() {
               <p className="text-gray-300 text-sm leading-relaxed mb-4">"{t.text}"</p>
               <div>
                 <p className="text-white text-sm font-medium">{t.name}</p>
-                <p className="text-emerald-400 text-xs font-mono mt-0.5">{t.role}</p>
+                <p className="text-blue-400 text-xs font-mono mt-0.5">{t.role}</p>
               </div>
             </div>
           ))}
@@ -358,7 +358,7 @@ export default function Landing() {
                 { ok: false, text: 'Unlimited interviews' },
               ].map(f => (
                 <li key={f.text} className={`flex items-center gap-2 text-sm ${f.ok ? 'text-gray-300' : 'text-gray-600'}`}>
-                  <span className={f.ok ? 'text-emerald-400' : ''}>{f.ok ? '✓' : '✗'}</span>
+                  <span className={f.ok ? 'text-blue-400' : ''}>{f.ok ? '✓' : '✗'}</span>
                   {f.text}
                 </li>
               ))}
@@ -372,11 +372,11 @@ export default function Landing() {
           </div>
 
           {/* Pro */}
-          <div className="bg-gray-900 border border-emerald-500/50 rounded-xl p-6 relative">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
+          <div className="bg-gray-900 border border-amber-500/50 rounded-xl p-6 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full font-mono">
               MOST POPULAR
             </div>
-            <p className="text-emerald-400 text-sm font-mono mb-2">Pro</p>
+            <p className="text-amber-400 text-sm font-mono mb-2">Pro</p>
             <p className="text-white font-mono font-bold text-4xl mb-1">
               ₹199<span className="text-gray-500 text-base font-normal">/month</span>
             </p>
@@ -384,14 +384,14 @@ export default function Landing() {
             <ul className="space-y-2.5 mb-6">
               {PRO_FEATURES.map(f => (
                 <li key={f} className="flex items-center gap-2 text-sm text-gray-300">
-                  <span className="text-emerald-400">✓</span>
+                  <span className="text-blue-400">✓</span>
                   {f}
                 </li>
               ))}
             </ul>
             <Link
               to="/upgrade"
-              className="block w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-center text-sm transition-colors"
+              className="block w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-center text-sm transition-colors"
             >
               Upgrade to Pro — ₹199/mo
             </Link>
@@ -409,7 +409,7 @@ export default function Landing() {
         </p>
         <Link
           to="/auth?mode=signup"
-          className="inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-4 rounded-lg transition-colors text-base"
+          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-8 py-4 rounded-lg transition-colors text-base"
         >
           Start Free Now →
         </Link>

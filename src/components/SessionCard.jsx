@@ -16,7 +16,7 @@ export default function SessionCard({ session }) {
         <p className="text-xs text-gray-600">{formatShortDate(session.created_at)}</p>
         <Link
           to={`/report/${session.id}`}
-          className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
+          className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
         >
           View report →
         </Link>

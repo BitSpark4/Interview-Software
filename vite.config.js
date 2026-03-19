@@ -12,14 +12,15 @@ export default defineConfig({
       'react/jsx-dev-runtime',
       'react-router-dom',
       'lucide-react',
+      '@phosphor-icons/react',
       '@supabase/supabase-js',
       'recharts',
       'react-markdown',
     ],
-    dedupe: ['react', 'react-dom', 'react-router-dom'],
+    dedupe: ['react', 'react-dom', 'react-router-dom', '@phosphor-icons/react'],
   },
   resolve: {
-    dedupe: ['react', 'react-dom', 'react-router-dom'],
+    dedupe: ['react', 'react-dom', 'react-router-dom', '@phosphor-icons/react'],
   },
   build: {
     rollupOptions: {

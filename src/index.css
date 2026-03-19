@@ -5,21 +5,63 @@
   --font-sans: 'Inter', sans-serif;
 
   /* Design tokens */
-  --color-page:        #0B0F19;
+  --color-page:        #0A0F1E;
   --color-sidebar:     #0F172A;
   --color-card:        #111827;
-  --color-card-hover:  #1F2937;
-  --color-input:       #1F2937;
-  --color-border:      #1F2937;
-  --color-border-hover:#374151;
+  --color-card-hover:  #1E293B;
+  --color-input:       #1E293B;
+  --color-border:      #1E293B;
+  --color-border-hover:#334155;
 
-  --color-brand:       #22C55E;
-  --color-brand-hover: #16A34A;
+  --color-brand:       #2563EB;
+  --color-brand-hover: #1D4ED8;
+  --color-brand-light: rgba(37,99,235,0.12);
+  --color-brand-border:rgba(37,99,235,0.25);
 
-  --color-text-primary:   #F9FAFB;
-  --color-text-secondary: #9CA3AF;
-  --color-text-muted:     #6B7280;
+  --color-gold:        #F59E0B;
+  --color-gold-hover:  #D97706;
+  --color-gold-light:  rgba(245,158,11,0.12);
+  --color-gold-border: rgba(245,158,11,0.25);
+
+  --color-text-primary:   #F8FAFC;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted:     #64748B;
   --color-text-disabled:  #4B5563;
+
+  --color-score-excellent: #22C55E;
+  --color-score-good:      #3B82F6;
+  --color-score-average:   #F59E0B;
+  --color-score-poor:      #EF4444;
+}
+
+:root {
+  --brand-primary:       #2563EB;
+  --brand-primary-hover: #1D4ED8;
+  --brand-primary-light: rgba(37,99,235,0.12);
+  --brand-primary-border:rgba(37,99,235,0.25);
+
+  --brand-gold:          #F59E0B;
+  --brand-gold-hover:    #D97706;
+  --brand-gold-light:    rgba(245,158,11,0.12);
+  --brand-gold-border:   rgba(245,158,11,0.25);
+
+  --bg-page:             #0A0F1E;
+  --bg-sidebar:          #0F172A;
+  --bg-card:             #111827;
+  --bg-card-hover:       #1E293B;
+  --bg-input:            #1E293B;
+
+  --border-default:      #1E293B;
+  --border-hover:        #334155;
+
+  --text-primary:        #F8FAFC;
+  --text-secondary:      #94A3B8;
+  --text-muted:          #64748B;
+
+  --score-excellent:     #22C55E;
+  --score-good:          #3B82F6;
+  --score-average:       #F59E0B;
+  --score-poor:          #EF4444;
 }
 
 /* Base resets */
@@ -29,7 +71,7 @@
 
 body {
   margin: 0;
-  background-color: #0B0F19;
+  background-color: #0A0F1E;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   min-width: 375px;

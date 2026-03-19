@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Play } from 'lucide-react'
+import { PlayCircle, Warning } from '@phosphor-icons/react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import { useAuth } from '../hooks/useAuth'
@@ -167,12 +167,12 @@ function CardGrid({ items, selected, onSelect, cols = 2 }) {
             onClick={() => onSelect(item.id)}
             className={`relative flex flex-col items-center text-center gap-2 p-4 rounded-xl border transition-all ${
               isSelected
-                ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_0_1px_#22c55e33]'
+                ? 'border-blue-500 bg-blue-500/10 shadow-[0_0_0_1px_#2563eb33]'
                 : 'border-gray-800 bg-gray-900 hover:border-gray-600 hover:bg-gray-800/60'
             }`}
           >
             {item.recommended && (
-              <span className="absolute top-2 right-2 text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full font-mono leading-none">
+              <span className="absolute top-2 right-2 text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-mono leading-none">
                 Recommended
               </span>
             )}
@@ -246,6 +246,32 @@ export default function InterviewSetup() {
   const [showUpload, setShowUpload]   = useState(false)
   const [resumeError, setResumeError] = useState('')
   const [questionCount, setQuestionCount] = useState(10)
+  const [showSwitchWarning, setShowSwitchWarning] = useState(false)
+  const [primaryReadiness, setPrimaryReadiness]   = useState(null)
+  const [savingGoalChange, setSavingGoalChange]   = useState(false)
+
+  // Sector ID mapping between UI format (it-tech) and DB format (it_tech)
+  const TO_DB   = { 'it-tech':'it_tech','government':'government','banking':'banking','engineering':'engineering','medical':'medical','students':'students','business':'business' }
+  const FROM_DB = Object.fromEntries(Object.entries(TO_DB).map(([k,v]) => [v,k]))
+
+  const primarySector    = userProfile?.primary_sector ?? ''          // DB format
+  const primarySectorUI  = FROM_DB[primarySector] ?? primarySector    // UI format
+  const primaryLabel     = SECTORS.find(s => s.id === primarySectorUI)?.title ?? primarySector
+  const selectedLabel    = SECTORS.find(s => s.id === sector)?.title ?? sector
+
+  // Fetch readiness % in primary sector on demand
+  async function loadPrimaryReadiness() {
+    if (!user || !primarySector) return
+    const { data } = await supabase
+      .from('sessions')
+      .select('total_score')
+      .eq('user_id', user.id)
+      .eq('sector', primarySector)
+      .eq('completed', true)
+    if (!data?.length) { setPrimaryReadiness(0); return }
+    const avg = data.reduce((s, r) => s + (r.total_score ?? 0), 0) / data.length
+    setPrimaryReadiness(Math.round(avg * 10))
+  }
 
   async function handleFileSelect(e) {
     const file = e.target.files?.[0]
@@ -259,6 +285,48 @@ export default function InterviewSetup() {
   // ── Navigation helpers ──────────────────────────────────────────────────
 
   function handleSectorContinue() {
+    // If user has a primary sector and chose a different one — show warning
+    if (primarySector && TO_DB[sector] !== primarySector) {
+      loadPrimaryReadiness()
+      setShowSwitchWarning(true)
+      return
+    }
+    setRole('')
+    setStep('role')
+  }
+
+  function handleStayPrimary() {
+    setSector(primarySectorUI)
+    setShowSwitchWarning(false)
+    setRole('')
+    setStep('role')
+  }
+
+  async function handleExploreAnyway() {
+    setShowSwitchWarning(false)
+    // Log the sector switch as a career insight
+    if (user) {
+      await supabase.from('career_insights').insert({
+        user_id:      user.id,
+        insight_type: 'sector_switch_alert',
+        message:      `Explored ${selectedLabel} while primary goal is ${primaryLabel}`,
+        sector:       TO_DB[sector],
+      })
+    }
+    setRole('')
+    setStep('role')
+  }
+
+  async function handleChangePrimary() {
+    if (!user) return
+    setSavingGoalChange(true)
+    await supabase.from('users').update({
+      primary_sector:     TO_DB[sector],
+      career_goal:        selectedLabel,
+      last_active_sector: TO_DB[sector],
+    }).eq('id', user.id)
+    setSavingGoalChange(false)
+    setShowSwitchWarning(false)
     setRole('')
     setStep('role')
   }
@@ -299,25 +367,63 @@ export default function InterviewSetup() {
   if (step === 'sector') {
     return (
       <AppLayout>
-        <div className="p-4 md:p-8 max-w-2xl">
+        <div className="p-4 md:p-8 max-w-6xl">
           <Link to="/dashboard" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
             ← Back to Dashboard
           </Link>
           <h1 className="font-bold text-white text-2xl mt-4 mb-1">Set Up Your Interview</h1>
           <p className="text-gray-500 text-sm mb-6">Takes 30 seconds</p>
 
-          <p className="text-gray-300 text-sm font-medium mb-4">Which sector are you preparing for?</p>
-          <CardGrid items={SECTORS} selected={sector} onSelect={setSector} cols={3} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left — sector grid */}
+            <div className="lg:col-span-7">
+              <p className="text-gray-300 text-sm font-medium mb-4">Which sector are you preparing for?</p>
+              <CardGrid items={SECTORS} selected={sector} onSelect={setSector} cols={3} />
+              <div className="mt-8">
+                <button
+                  type="button"
+                  onClick={handleSectorContinue}
+                  disabled={!sector}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
+                >
+                  Continue →
+                </button>
+              </div>
+            </div>
 
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={handleSectorContinue}
-              disabled={!sector}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
-            >
-              Continue →
-            </button>
+            {/* Right — why practice matters */}
+            <div className="hidden lg:block lg:col-span-5 space-y-4">
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 16 }}>Why practice matters</p>
+                <div className="space-y-3">
+                  {[
+                    { stat: '10M+',  label: 'exam aspirants in India compete each year' },
+                    { stat: '3%',    label: 'pass rate in competitive exams like UPSC' },
+                    { stat: '3×',    label: 'more likely to succeed with mock practice' },
+                  ].map(({ stat, label }) => (
+                    <div key={stat} style={{ background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.12)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 22, fontWeight: 800, color: '#2563EB', flexShrink: 0, minWidth: 48 }}>{stat}</span>
+                      <span style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.4 }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Testimonial */}
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 20 }}>
+                <p style={{ fontSize: 13, color: '#D1D5DB', lineHeight: 1.6, fontStyle: 'italic', marginBottom: 12 }}>
+                  "I cleared IBPS PO after practicing here for 3 weeks. The questions were exactly what came in the real exam."
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1F2937', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>R</div>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', margin: 0 }}>Rahul S.</p>
+                    <p style={{ fontSize: 11, color: '#6B7280', margin: 0 }}>IBPS PO 2025</p>
+                  </div>
+                  <span style={{ marginLeft: 'auto', fontSize: 12, color: '#F59E0B' }}>★★★★★</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -330,35 +436,54 @@ export default function InterviewSetup() {
     const sectorLabel = SECTORS.find(s => s.id === sector)?.title ?? ''
     const roles = ROLES_BY_SECTOR[sector] ?? []
 
+    const SECTOR_TIPS = {
+      'it-tech':     { headline: 'Frontend roles are most hired in India', facts: ['Top hiring companies: TCS, Wipro, Infosys, Startups', 'React & Node.js skills command 30% salary premium', 'Freshers placed avg ₹4–8 LPA in campus drives'] },
+      'government':  { headline: 'UPSC has 1.2M aspirants yearly', facts: ['Only ~1000 make it to final selection', 'Start with GS Paper 1 — History & Geography basics', 'Consistent daily practice is the #1 success factor'] },
+      'banking':     { headline: 'IBPS conducts 5000+ vacancies per year', facts: ['IBPS PO is the most sought-after banking exam', 'Numerical reasoning is where most marks are lost', 'Mock tests improve speed and accuracy significantly'] },
+      'engineering': { headline: 'GATE 2025 had 9 lakh+ registrations', facts: ['Core branch questions test conceptual fundamentals', 'PSU recruitment depends heavily on GATE score', 'Practice numerical problems daily for best results'] },
+      'medical':     { headline: 'NEET PG has 2 lakh+ doctors appearing', facts: ['Clinical case approach separates toppers from others', 'High-yield topics: Pharma, Pathology, Medicine', 'Practice with real clinical case scenarios daily'] },
+      'students':    { headline: 'First impression matters in campus placements', facts: ['Communication skills determine 60% of selection', 'Resume shortlisting happens in under 30 seconds', 'Practice with sector-specific questions for confidence'] },
+      'business':    { headline: 'CAT has 3 lakh+ aspirants competing for IIM seats', facts: ['GD performance is often the deciding factor', 'Case studies require structured MECE thinking', 'IIM interviews focus on academics + self-awareness'] },
+    }
+    const tip = SECTOR_TIPS[sector] ?? { headline: 'Practice makes perfect', facts: ['Mock interviews build confidence', 'AI feedback identifies blind spots', 'Track your improvement over time'] }
+
     return (
       <AppLayout>
-        <div className="p-4 md:p-8 max-w-2xl">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
-          >
-            ← Back
-          </button>
+        <div className="p-4 md:p-8 max-w-6xl">
+          <button type="button" onClick={handleBack} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
           <h1 className="font-bold text-white text-2xl mt-4 mb-1">Set Up Your Interview</h1>
           <div className="flex items-center gap-2 mb-6">
-            <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">
-              {sectorLabel}
-            </span>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{sectorLabel}</span>
           </div>
 
-          <p className="text-gray-300 text-sm font-medium mb-4">Which role or exam are you targeting?</p>
-          <CardGrid items={roles} selected={role} onSelect={setRole} cols={2} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left — role cards */}
+            <div className="lg:col-span-7">
+              <p className="text-gray-300 text-sm font-medium mb-4">Which role or exam are you targeting?</p>
+              <CardGrid items={roles} selected={role} onSelect={setRole} cols={2} />
+              <div className="mt-8">
+                <button type="button" onClick={handleRoleContinue} disabled={!role}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">
+                  Continue →
+                </button>
+              </div>
+            </div>
 
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={handleRoleContinue}
-              disabled={!role}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
-            >
-              Continue →
-            </button>
+            {/* Right — sector tip panel */}
+            <div className="hidden lg:block lg:col-span-5">
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24 }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Did you know?</p>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 20, lineHeight: 1.4 }}>{tip.headline}</p>
+                <div className="space-y-3">
+                  {tip.facts.map((f, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span style={{ color: '#2563EB', fontSize: 14, flexShrink: 0, marginTop: 1 }}>✓</span>
+                      <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0, lineHeight: 1.5 }}>{f}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -395,7 +520,7 @@ export default function InterviewSetup() {
           <select
             value={state}
             onChange={e => setState(e.target.value)}
-            className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer"
+            className="w-full bg-gray-900 border border-gray-700 text-white text-sm rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
           >
             {INDIAN_STATES.map(s => (
               <option key={s} value={s}>{s}</option>
@@ -406,7 +531,7 @@ export default function InterviewSetup() {
             <button
               type="button"
               onClick={() => { setInterviewType(''); setStep('type') }}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
             >
               Continue →
             </button>
@@ -446,7 +571,7 @@ export default function InterviewSetup() {
               type="button"
               onClick={() => { setInterviewType(''); setStep('type') }}
               disabled={!education}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
             >
               Continue →
             </button>
@@ -463,12 +588,24 @@ export default function InterviewSetup() {
     const roleLabel   = ROLES_BY_SECTOR[sector]?.find(r => r.id === role)?.label ?? ''
     const types       = INTERVIEW_TYPES_BY_SECTOR[sector] ?? []
 
+    const TYPE_DETAILS = [
+      { id: 'technical',         emoji: '💻', title: 'Technical Round',    desc: 'Algorithms, system design, coding concepts, and domain-specific technical questions.' },
+      { id: 'behavioral',        emoji: '🌟', title: 'Behavioral Round',   desc: 'STAR method questions on past experiences, leadership, teamwork, and problem solving.' },
+      { id: 'hr',                emoji: '👥', title: 'HR Round',           desc: 'Salary negotiation, culture fit, career goals, strengths and weaknesses.' },
+      { id: 'mixed',             emoji: '🔀', title: 'Mixed Round',        desc: 'Complete real interview simulation covering all question types in one session.' },
+      { id: 'gk',                emoji: '🌍', title: 'GK Round',           desc: 'History, Geography, Polity, Economy and Science questions.' },
+      { id: 'current_affairs',   emoji: '📰', title: 'Current Affairs',    desc: 'Latest government schemes, international events, and policy changes.' },
+      { id: 'mock_test',         emoji: '🎯', title: 'Full Mock Test',     desc: 'Complete exam simulation covering all topics and question types.' },
+      { id: 'banking_awareness', emoji: '🏦', title: 'Banking Awareness',  desc: 'RBI policies, banking terms, NBFC types, accounts and recent monetary decisions.' },
+      { id: 'numerical',         emoji: '🔢', title: 'Numerical Reasoning',desc: 'Quantitative aptitude, data interpretation and logical reasoning.' },
+      { id: 'core_technical',    emoji: '⚙️', title: 'Core Technical',    desc: 'Engineering fundamentals, numerical problems, and concept-based questions.' },
+      { id: 'case_study',        emoji: '📊', title: 'Case Study',         desc: 'Business problem analysis using MECE framework and structured thinking.' },
+    ]
+
     return (
       <AppLayout>
-        <div className="p-4 md:p-8 max-w-2xl">
-          <button type="button" onClick={handleBack} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
-            ← Back
-          </button>
+        <div className="p-4 md:p-8 max-w-6xl">
+          <button type="button" onClick={handleBack} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
           <h1 className="font-bold text-white text-2xl mt-4 mb-1">Set Up Your Interview</h1>
           <div className="flex items-center gap-2 mb-6">
             <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{sectorLabel}</span>
@@ -476,18 +613,42 @@ export default function InterviewSetup() {
             <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{roleLabel}</span>
           </div>
 
-          <p className="text-gray-300 text-sm font-medium mb-4">Which type of round do you want to practice?</p>
-          <CardGrid items={types} selected={interviewType} onSelect={setInterviewType} cols={2} />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left — type cards */}
+            <div className="lg:col-span-7">
+              <p className="text-gray-300 text-sm font-medium mb-4">Which type of round do you want to practice?</p>
+              <CardGrid items={types} selected={interviewType} onSelect={setInterviewType} cols={2} />
+              <div className="mt-8">
+                <button type="button" onClick={() => setStep('profile')} disabled={!interviewType}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">
+                  Continue →
+                </button>
+              </div>
+            </div>
 
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={() => setStep('profile')}
-              disabled={!interviewType}
-              className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
-            >
-              Continue →
-            </button>
+            {/* Right — what to expect */}
+            <div className="hidden lg:block lg:col-span-5">
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 4 }}>What to expect</p>
+                <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>Each round type focuses on different skills</p>
+                <div className="space-y-4">
+                  {TYPE_DETAILS.filter(t => types.some(ty => ty.id === t.id)).map(t => (
+                    <div key={t.id} style={{
+                      background: interviewType === t.id ? 'rgba(37,99,235,0.08)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${interviewType === t.id ? 'rgba(37,99,235,0.25)' : '#1E293B'}`,
+                      borderRadius: 10, padding: '12px 14px',
+                      transition: 'all 0.2s',
+                    }}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span style={{ fontSize: 14 }}>{t.emoji}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: interviewType === t.id ? '#2563EB' : '#E5E7EB' }}>{t.title}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>{t.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -504,7 +665,7 @@ export default function InterviewSetup() {
 
     return (
       <AppLayout>
-        <div className="p-4 md:p-8 max-w-2xl">
+        <div className="p-4 md:p-8 max-w-6xl">
           <button type="button" onClick={handleBack} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
           <h1 className="font-bold text-white text-2xl mt-4 mb-1">Set Up Your Interview</h1>
           <div className="flex items-center gap-2 mb-6">
@@ -512,6 +673,8 @@ export default function InterviewSetup() {
             <span className="text-gray-700 text-xs">›</span>
             <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{roleLabel}</span>
           </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7">
 
           {/* IT Tech / Medical — Resume upload */}
           {needsResume && (
@@ -519,31 +682,31 @@ export default function InterviewSetup() {
               <p className="text-gray-300 text-sm font-medium mb-4">Your resume <span className="text-gray-600 font-normal">(optional)</span></p>
               {savedResume && !showUpload ? (
                 <>
-                  <div className="border border-emerald-500/40 bg-emerald-500/5 rounded-xl p-5 flex items-start gap-4">
+                  <div className="border border-blue-500/40 bg-blue-500/5 rounded-xl p-5 flex items-start gap-4">
                     <span className="text-2xl mt-0.5">✅</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-emerald-400 text-sm font-semibold">Resume ready</p>
+                      <p className="text-blue-400 text-sm font-semibold">Resume ready</p>
                       <p className="text-gray-500 text-xs truncate mt-0.5">{savedResume.filename}</p>
                       <button type="button" onClick={() => setShowUpload(true)} className="text-gray-600 hover:text-gray-400 text-xs mt-1 transition-colors underline underline-offset-2">Update resume</button>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setStep('review')} className="w-full mt-6 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue with saved resume →</button>
+                  <button type="button" onClick={() => setStep('review')} className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue with saved resume →</button>
                 </>
               ) : uploading ? (
                 <div className="border-2 border-dashed border-gray-700 rounded-xl p-8 flex flex-col items-center gap-3">
-                  <Spinner size={24} color="border-emerald-500" />
+                  <Spinner size={24} color="border-blue-500" />
                   <p className="text-gray-400 text-sm">Reading resume…</p>
                 </div>
               ) : resumeText ? (
                 <>
-                  <div className="border border-emerald-500/40 bg-emerald-500/5 rounded-xl p-5 flex items-start gap-4">
+                  <div className="border border-blue-500/40 bg-blue-500/5 rounded-xl p-5 flex items-start gap-4">
                     <span className="text-2xl mt-0.5">✅</span>
                     <div>
-                      <p className="text-emerald-400 text-sm font-semibold">Resume ready</p>
+                      <p className="text-blue-400 text-sm font-semibold">Resume ready</p>
                       <p className="text-gray-500 text-xs mt-0.5">{resumeText.length} characters extracted</p>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setStep('review')} className="w-full mt-6 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue →</button>
+                  <button type="button" onClick={() => setStep('review')} className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue →</button>
                 </>
               ) : (
                 <>
@@ -572,7 +735,7 @@ export default function InterviewSetup() {
                   <p className="text-gray-500 text-xs mt-1 leading-relaxed">Interview will include {state}-specific questions, current affairs, and local exam patterns</p>
                 </div>
               </div>
-              <button type="button" onClick={() => setStep('review')} className="w-full mt-6 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue →</button>
+              <button type="button" onClick={() => setStep('review')} className="w-full mt-6 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue →</button>
             </div>
           )}
 
@@ -593,7 +756,7 @@ export default function InterviewSetup() {
                 ))}
               </div>
               <button type="button" onClick={() => setStep('education')} className="text-gray-600 hover:text-gray-400 text-xs mt-3 transition-colors block">← Edit profile</button>
-              <button type="button" onClick={() => setStep('review')} className="w-full mt-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue →</button>
+              <button type="button" onClick={() => setStep('review')} className="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">Continue →</button>
             </div>
           )}
 
@@ -606,6 +769,31 @@ export default function InterviewSetup() {
               <button type="button" onClick={() => { setExperience('fresher'); setStep('review') }} className="w-full mt-4 text-gray-600 hover:text-gray-400 text-sm transition-colors py-2">Skip →</button>
             </div>
           )}
+          </div>{/* end left col */}
+
+          {/* Right — why resume / profile matters */}
+          <div className="hidden lg:block lg:col-span-5">
+            <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 4 }}>Why this step matters</p>
+              <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>Claude tailors every question to your profile</p>
+              <div className="space-y-4">
+                {[
+                  { emoji: '🎯', title: 'Resume-aware questions', desc: 'Claude reads your actual projects and asks about them specifically.' },
+                  { emoji: '🧠', title: 'Tailored to your experience', desc: 'Fresher vs senior — difficulty and depth adjust automatically.' },
+                  { emoji: '📍', title: 'Location context', desc: 'State-specific vacancies, cut-offs, and current affairs included.' },
+                ].map(item => (
+                  <div key={item.emoji} className="flex items-start gap-3">
+                    <span style={{ fontSize: 20, flexShrink: 0 }}>{item.emoji}</span>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', margin: '0 0 2px' }}>{item.title}</p>
+                      <p style={{ fontSize: 12, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          </div>{/* end grid */}
         </div>
       </AppLayout>
     )
@@ -628,77 +816,208 @@ export default function InterviewSetup() {
       STATE_SECTORS.has(sector) ? { label: 'State', value: state } : null,
       education ? { label: 'Education', value: eduLabel } : null,
       { label: 'Round',     value: typeLabel },
-      { label: 'Questions', value: qLabel, color: isPro ? '#22C55E' : '#F59E0B' },
+      { label: 'Questions', value: qLabel, color: isPro ? '#2563EB' : '#F59E0B' },
     ].filter(Boolean)
 
     return (
       <AppLayout>
-        <div className="p-4 md:p-8 max-w-2xl">
+        <div className="p-4 md:p-8 max-w-6xl">
           <button type="button" onClick={() => setStep('profile')} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
           <h1 className="font-bold text-white text-xl mt-4 mb-1">Ready to start?</h1>
           <p className="text-sm text-gray-400 mb-6">Review your interview setup</p>
 
-          {/* Summary card */}
-          <div style={{ background: '#111827', border: '1px solid #1F2937', borderRadius: 12, padding: 24, marginBottom: 16 }}>
-            {rows.map((row, i) => (
-              <div key={row.label} className="flex items-center justify-between" style={{ paddingTop: 12, paddingBottom: 12, borderBottom: i < rows.length - 1 ? '1px solid #1F2937' : 'none' }}>
-                <span className="text-gray-400 text-sm">{row.label}</span>
-                <span className="text-sm font-medium" style={{ color: row.color || '#F9FAFB' }}>{row.value}</span>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left — summary + question count + start */}
+            <div className="lg:col-span-7">
+              {/* Summary card */}
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 12, padding: 24, marginBottom: 16 }}>
+                {rows.map((row, i) => (
+                  <div key={row.label} className="flex items-center justify-between" style={{ paddingTop: 12, paddingBottom: 12, borderBottom: i < rows.length - 1 ? '1px solid #1E293B' : 'none' }}>
+                    <span className="text-gray-400 text-sm">{row.label}</span>
+                    <span className="text-sm font-medium" style={{ color: row.color || '#F9FAFB' }}>{row.value}</span>
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {/* Question count selector */}
+              <div style={{ marginBottom: 24 }}>
+                <p className="text-white text-sm font-semibold mb-0.5">How many questions?</p>
+                <p className="text-gray-500 text-xs mb-3">Choose your session length</p>
+                <div className="flex gap-2">
+                  {[5, 10, 15, 20, 30].map(n => {
+                    const locked = !isPro && n > 5
+                    const active = questionCount === n
+                    return (
+                      <div key={n} style={{ flex: 1, position: 'relative' }}>
+                        <button
+                          type="button"
+                          onClick={() => !locked && setQuestionCount(n)}
+                          className="w-full font-bold text-sm transition-all"
+                          style={{
+                            height: 44, borderRadius: 8,
+                            background: active ? 'rgba(37,99,235,0.12)' : '#1E293B',
+                            border: active ? '2px solid #2563EB' : '1px solid #334155',
+                            color: active ? '#2563EB' : '#94A3B8',
+                            opacity: locked ? 0.4 : 1,
+                            cursor: locked ? 'not-allowed' : 'pointer',
+                            pointerEvents: locked ? 'none' : 'auto',
+                          }}
+                        >{n}</button>
+                        {locked && (
+                          <span style={{
+                            position: 'absolute', top: -6, right: -4,
+                            background: '#F59E0B', color: '#000',
+                            fontSize: 8, fontWeight: 700,
+                            padding: '1px 4px', borderRadius: 4,
+                            lineHeight: 1.4,
+                          }}>PRO</span>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {isPro ? (
+                  <p className="text-center mt-2" style={{ fontSize: 12, color: '#6B7280' }}>
+                    {questionCount} — {Q_LABELS[questionCount]}
+                  </p>
+                ) : (
+                  <p className="text-center mt-2" style={{ fontSize: 12, color: '#F59E0B' }}>
+                    Free plan: 5 questions per session ·{' '}
+                    <Link to="/upgrade" style={{ color: '#F59E0B', textDecoration: 'underline' }}>
+                      Upgrade to choose up to 30
+                    </Link>
+                  </p>
+                )}
+              </div>
+
+              {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+
+              {/* Start Interview button */}
+              <button
+                type="button"
+                onClick={handleStart}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed"
+                style={{ height: 52, background: loading ? '#334155' : '#2563EB', borderRadius: 10, border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#1D4ED8' }}
+                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = loading ? '#334155' : '#2563EB' }}
+              >
+                {loading ? (
+                  <><Spinner size={18} color="border-white" /><span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Setting up your interview…</span></>
+                ) : (
+                  <><PlayCircle size={18} color="#fff" /><span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Start Interview</span></>
+                )}
+              </button>
+
+              <button type="button" onClick={() => setStep('profile')} className="block w-full text-center text-gray-500 hover:text-gray-300 text-sm transition-colors mt-3">
+                Change something
+              </button>
+            </div>
+
+            {/* Right — preparation tips */}
+            <div className="hidden lg:block lg:col-span-5">
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24, marginBottom: 16 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 4 }}>Before you start</p>
+                <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>3 tips for a great interview session</p>
+                <div className="space-y-4">
+                  {[
+                    { n: '1', tip: 'Speak clearly and specifically', desc: 'Avoid vague answers. Name real examples, dates, numbers.' },
+                    { n: '2', tip: 'Use examples from experience', desc: 'The STAR method: Situation → Task → Action → Result.' },
+                    { n: '3', tip: 'Think out loud while answering', desc: 'Show your reasoning process — interviewers evaluate your thinking.' },
+                  ].map(({ n, tip, desc }) => (
+                    <div key={n} className="flex items-start gap-3">
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#2563EB', flexShrink: 0, marginTop: 1 }}>{n}</div>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', margin: '0 0 2px' }}>{tip}</p>
+                        <p style={{ fontSize: 12, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 12, padding: '14px 18px' }}>
+                <p style={{ fontSize: 13, color: '#F59E0B', fontWeight: 600, margin: '0 0 4px' }}>💡 Pro tip</p>
+                <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, lineHeight: 1.5 }}>
+                  Answer in 2–3 minutes per question. Too short shows lack of depth. Too long loses focus.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  // ── Sector switch warning modal ────────────────────────────────────────
+
+  if (showSwitchWarning) {
+    const readinessPct = primaryReadiness ?? '…'
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}>
+        <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 20, padding: 32, width: '100%', maxWidth: 480 }}>
+
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-4">
+            <Warning size={26} color="#F59E0B" />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>Switching Sectors</h2>
           </div>
 
-          {/* Question count selector */}
-          <div style={{ marginBottom: 24 }}>
-            <p className="text-white text-sm font-semibold mb-0.5">How many questions?</p>
-            <p className="text-gray-500 text-xs mb-3">Choose your session length</p>
-            <div className="flex gap-2">
-              {(isPro ? [5, 10, 15, 20, 30] : [5, 10]).map(n => (
-                <button
-                  key={n} type="button"
-                  onClick={() => setQuestionCount(n)}
-                  className="flex-1 font-bold text-sm transition-all"
-                  style={{
-                    height: 44, borderRadius: 8,
-                    background: questionCount === n ? 'rgba(34,197,94,0.12)' : '#1F2937',
-                    border: questionCount === n ? '2px solid #22C55E' : '1px solid #374151',
-                    color: questionCount === n ? '#22C55E' : '#9CA3AF',
-                  }}
-                  onMouseEnter={e => { if (questionCount !== n) { e.currentTarget.style.borderColor = '#4B5563'; e.currentTarget.style.color = '#F9FAFB' } }}
-                  onMouseLeave={e => { if (questionCount !== n) { e.currentTarget.style.borderColor = '#374151'; e.currentTarget.style.color = '#9CA3AF' } }}
-                >{n}</button>
-              ))}
-            </div>
-            <p className="text-center mt-2" style={{ fontSize: 12, color: '#6B7280' }}>
-              {questionCount} — {Q_LABELS[questionCount]}
-              {!isPro && <>{' · '}<Link to="/upgrade" style={{ color: '#F59E0B' }}>Upgrade for up to 30 →</Link></>}
+          {/* Warning text */}
+          <p style={{ fontSize: 14, color: '#D1D5DB', lineHeight: 1.6, marginBottom: 16 }}>
+            Your primary goal is <strong style={{ color: '#F9FAFB' }}>{primaryLabel}</strong>.
+            Starting a <strong style={{ color: '#F9FAFB' }}>{selectedLabel}</strong> interview
+            may split your preparation focus.
+          </p>
+
+          {/* AI advice box */}
+          <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '14px 16px', marginBottom: 24 }}>
+            <p style={{ fontSize: 13, color: '#FCD34D', fontWeight: 600, margin: '0 0 6px 0' }}>AI Advice</p>
+            <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, margin: 0 }}>
+              Most successful candidates focus on one sector until they achieve 80% readiness
+              before exploring others. You are currently at{' '}
+              <strong style={{ color: '#F59E0B' }}>{readinessPct}%</strong> in{' '}
+              <strong style={{ color: '#F9FAFB' }}>{primaryLabel}</strong>.
             </p>
           </div>
 
-          {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+          {/* Action buttons */}
+          <div className="space-y-3">
+            {/* Button 1 — stay primary */}
+            <button
+              onClick={handleStayPrimary}
+              className="w-full font-bold text-sm transition-all"
+              style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '13px 20px', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+              onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+            >
+              Continue {primaryLabel} Preparation
+            </button>
 
-          {/* Start Interview button */}
-          <button
-            type="button"
-            onClick={handleStart}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 transition-all disabled:cursor-not-allowed"
-            style={{ height: 52, background: loading ? '#374151' : '#22C55E', borderRadius: 10, border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = '#16A34A' }}
-            onMouseLeave={e => { if (!loading) e.currentTarget.style.background = loading ? '#374151' : '#22C55E' }}
-          >
-            {loading ? (
-              <><Spinner size={18} color="border-white" /><span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>Setting up your interview…</span></>
-            ) : (
-              <><Play size={18} color="#000" fill="#000" /><span style={{ fontSize: 15, fontWeight: 700, color: '#000' }}>Start Interview</span></>
-            )}
-          </button>
+            {/* Button 2 — explore anyway */}
+            <button
+              onClick={handleExploreAnyway}
+              className="w-full text-sm transition-all"
+              style={{ background: 'transparent', color: '#D1D5DB', border: '1px solid #4B5563', borderRadius: 10, padding: '12px 20px', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#6B7280'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#4B5563'}
+            >
+              Explore {selectedLabel} Anyway
+            </button>
 
-          <button type="button" onClick={() => setStep('profile')} className="block w-full text-center text-gray-500 hover:text-gray-300 text-sm transition-colors mt-3">
-            Change something
-          </button>
+            {/* Button 3 — change primary */}
+            <button
+              onClick={handleChangePrimary}
+              disabled={savingGoalChange}
+              className="w-full text-sm transition-colors"
+              style={{ background: 'transparent', color: '#6B7280', border: 'none', padding: '8px', cursor: 'pointer' }}
+            >
+              {savingGoalChange ? 'Saving…' : `Change my career goal to ${selectedLabel}`}
+            </button>
+          </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 

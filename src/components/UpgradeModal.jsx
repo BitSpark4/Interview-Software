@@ -15,7 +15,7 @@ export default function UpgradeModal({ resetDate, onClose }) {
         </p>
         <Link
           to="/upgrade"
-          className="block w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3 rounded-lg text-center transition-colors"
+          className="block w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-center transition-colors"
         >
           Upgrade — ₹199/month
         </Link>

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Shield, Users, Crown, User, Target, Activity,
-  BarChart2, RefreshCw, CheckCircle, TrendingUp,
-} from 'lucide-react'
+  ShieldStar, Users, Crown, UserCircle, Target, ChartLineUp,
+  ChartBar, ArrowCounterClockwise, CheckCircle,
+} from '@phosphor-icons/react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, PieChart, Pie, Cell, Legend,
@@ -100,7 +100,7 @@ export default function Admin() {
   const paginatedUsers = recentUsers.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
   const pieData = s ? [
-    { name: 'Pro', value: s.pro_users, color: '#22C55E' },
+    { name: 'Pro', value: s.pro_users, color: '#F59E0B' },
     { name: 'Free', value: s.free_users, color: '#1F2937' },
   ] : []
 
@@ -112,7 +112,7 @@ export default function Admin() {
         <div className="flex items-start justify-between" style={{ marginBottom: 28 }}>
           <div>
             <div className="flex items-center gap-2" style={{ marginBottom: 4 }}>
-              <Shield size={24} color="#F59E0B" />
+              <ShieldStar size={24} color="#F59E0B" />
               <h1 style={{ fontSize: 28, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>Admin Dashboard</h1>
             </div>
             <p style={{ fontSize: 14, color: '#9CA3AF' }}>InterviewIQ — Internal Overview</p>
@@ -126,7 +126,7 @@ export default function Admin() {
             <button onClick={fetchStats} disabled={loading}
               className="flex items-center gap-1.5 transition-all"
               style={{ fontSize: 13, color: '#9CA3AF', background: '#1F2937', border: '1px solid #374151', padding: '6px 14px', borderRadius: 8, cursor: 'pointer' }}>
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+              <ArrowCounterClockwise size={13} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
           </div>
         </div>
@@ -156,10 +156,10 @@ export default function Admin() {
           ) : (<>
             <StatCard icon={Users}    iconColor="#3B82F6" label="Total Users"          value={s?.total_users}     sub={`+${s?.new_users_week} this week`} />
             <StatCard icon={Crown}    iconColor="#F59E0B" label="Pro Users"            value={s?.pro_users}       sub={`₹${(s?.mrr || 0).toLocaleString('en-IN')} MRR`} />
-            <StatCard icon={User}     iconColor="#6B7280" label="Free Users"           value={s?.free_users}      sub={`${s?.conversion}% conversion`} />
-            <StatCard icon={Target}   iconColor="#22C55E" label="Total Interviews"     value={s?.total_sessions}  sub={`${s?.completed_sessions} completed`} />
-            <StatCard icon={Activity} iconColor="#8B5CF6" label="Sessions Today"       value={s?.sessions_today}  sub={`${s?.new_users_today} new users today`} />
-            <StatCard icon={BarChart2} iconColor="#F97316" label="Avg Interview Score" value={s?.avg_score}       sub="Across all sessions" />
+            <StatCard icon={UserCircle} iconColor="#6B7280" label="Free Users"          value={s?.free_users}      sub={`${s?.conversion}% conversion`} />
+            <StatCard icon={Target}   iconColor="#2563EB" label="Total Interviews"     value={s?.total_sessions}  sub={`${s?.completed_sessions} completed`} />
+            <StatCard icon={ChartLineUp} iconColor="#8B5CF6" label="Sessions Today"       value={s?.sessions_today}  sub={`${s?.new_users_today} new users today`} />
+            <StatCard icon={ChartBar} iconColor="#F97316" label="Avg Interview Score" value={s?.avg_score}       sub="Across all sessions" />
           </>)}
         </div>
 
@@ -171,7 +171,7 @@ export default function Admin() {
             <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', marginBottom: 4 }}>User Registrations</p>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>New signups over last 14 days</p>
             {loading && !data ? (
-              <div className="flex justify-center" style={{ height: 180 }}><Spinner size={20} color="border-emerald-500" /></div>
+              <div className="flex justify-center" style={{ height: 180 }}><Spinner size={20} color="border-blue-500" /></div>
             ) : (
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={growthChart}>
@@ -180,10 +180,10 @@ export default function Admin() {
                     tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} width={24} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: '#9CA3AF' }} itemStyle={{ color: '#22C55E' }} />
-                  <Line type="monotone" dataKey="count" stroke="#22C55E" strokeWidth={2}
-                    dot={{ fill: '#22C55E', r: 3 }} activeDot={{ r: 5 }}
-                    fill="rgba(34,197,94,0.1)" />
+                    labelStyle={{ color: '#9CA3AF' }} itemStyle={{ color: '#2563EB' }} />
+                  <Line type="monotone" dataKey="count" stroke="#2563EB" strokeWidth={2}
+                    dot={{ fill: '#2563EB', r: 3 }} activeDot={{ r: 5 }}
+                    fill="rgba(37,99,235,0.1)" />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -194,7 +194,7 @@ export default function Admin() {
             <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', marginBottom: 4 }}>User Plans</p>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>Pro vs Free distribution</p>
             {loading && !data ? (
-              <div className="flex justify-center" style={{ height: 160 }}><Spinner size={20} color="border-emerald-500" /></div>
+              <div className="flex justify-center" style={{ height: 160 }}><Spinner size={20} color="border-blue-500" /></div>
             ) : (
               <>
                 <ResponsiveContainer width="100%" height={150}>
@@ -208,7 +208,7 @@ export default function Admin() {
                 </ResponsiveContainer>
                 <div className="flex justify-center gap-5" style={{ marginTop: 4 }}>
                   <div className="flex items-center gap-1.5">
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E' }} />
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
                     <span style={{ fontSize: 12, color: '#9CA3AF' }}>Pro — {s?.pro_users} ({s?.conversion}%)</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -229,15 +229,15 @@ export default function Admin() {
             <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', marginBottom: 4 }}>Most Practiced Roles</p>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>Sessions by role</p>
             {loading && !data ? (
-              <div className="flex justify-center" style={{ height: 160 }}><Spinner size={20} color="border-emerald-500" /></div>
+              <div className="flex justify-center" style={{ height: 160 }}><Spinner size={20} color="border-blue-500" /></div>
             ) : (
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={roleChart} layout="vertical">
                   <XAxis type="number" tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis type="category" dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
                   <Tooltip contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
-                    itemStyle={{ color: '#22C55E' }} />
-                  <Bar dataKey="count" fill="#22C55E" radius={[0, 4, 4, 0]} />
+                    itemStyle={{ color: '#2563EB' }} />
+                  <Bar dataKey="count" fill="#2563EB" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -248,7 +248,7 @@ export default function Admin() {
             <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', marginBottom: 4 }}>Interview Types</p>
             <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>Sessions by type</p>
             {loading && !data ? (
-              <div className="flex justify-center" style={{ height: 160 }}><Spinner size={20} color="border-emerald-500" /></div>
+              <div className="flex justify-center" style={{ height: 160 }}><Spinner size={20} color="border-blue-500" /></div>
             ) : (
               <ResponsiveContainer width="100%" height={160}>
                 <BarChart data={typeChart} layout="vertical">
@@ -273,7 +273,7 @@ export default function Admin() {
           </div>
 
           {loading && !data ? (
-            <div className="flex justify-center" style={{ padding: 32 }}><Spinner size={20} color="border-emerald-500" /></div>
+            <div className="flex justify-center" style={{ padding: 32 }}><Spinner size={20} color="border-blue-500" /></div>
           ) : (
             <>
               {/* Table header */}
@@ -287,8 +287,8 @@ export default function Admin() {
               </div>
 
               {paginatedUsers.map(u => {
-                const statusColor = u.status === 'New' ? '#3B82F6' : u.status === 'Active' ? '#22C55E' : '#6B7280'
-                const statusBg    = u.status === 'New' ? 'rgba(59,130,246,0.12)' : u.status === 'Active' ? 'rgba(34,197,94,0.12)' : 'rgba(107,114,128,0.12)'
+                const statusColor = u.status === 'New' ? '#3B82F6' : u.status === 'Active' ? '#2563EB' : '#6B7280'
+                const statusBg    = u.status === 'New' ? 'rgba(59,130,246,0.12)' : u.status === 'Active' ? 'rgba(37,99,235,0.12)' : 'rgba(107,114,128,0.12)'
                 return (
                   <div key={u.id} className="grid grid-cols-2 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_1fr] items-center transition-colors"
                     style={{ height: 52, borderBottom: '1px solid #1F2937', gap: 12 }}
@@ -299,8 +299,8 @@ export default function Admin() {
                     <div className="hidden md:block">
                       <span style={{
                         fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-                        background: u.plan === 'pro' ? 'rgba(34,197,94,0.12)' : '#1F2937',
-                        color: u.plan === 'pro' ? '#22C55E' : '#9CA3AF',
+                        background: u.plan === 'pro' ? 'rgba(245,158,11,0.12)' : '#1F2937',
+                        color: u.plan === 'pro' ? '#F59E0B' : '#9CA3AF',
                       }}>{u.plan === 'pro' ? 'Pro' : 'Free'}</span>
                     </div>
                     <p className="hidden md:block" style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
@@ -340,9 +340,9 @@ export default function Admin() {
           <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', marginBottom: 16 }}>System Status</p>
           <div className="flex flex-wrap gap-6">
             {[
-              { icon: CheckCircle, color: '#22C55E', label: 'App Online',      sub: 'getinterviewiq.in' },
-              { icon: CheckCircle, color: '#22C55E', label: 'Database Online', sub: `${s?.total_users || 0} users` },
-              { icon: CheckCircle, color: '#22C55E', label: 'AI Online',       sub: 'Claude API' },
+              { icon: CheckCircle, color: '#2563EB', label: 'App Online',      sub: 'getinterviewiq.in' },
+              { icon: CheckCircle, color: '#2563EB', label: 'Database Online', sub: `${s?.total_users || 0} users` },
+              { icon: CheckCircle, color: '#2563EB', label: 'AI Online',       sub: 'Claude API' },
               { icon: Crown,       color: '#F59E0B', label: 'Monthly Revenue', sub: `₹${(s?.mrr || 0).toLocaleString('en-IN')}` },
             ].map(item => (
               <div key={item.label} className="flex items-center gap-3">

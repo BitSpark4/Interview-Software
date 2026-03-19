@@ -18,6 +18,7 @@ export function useInterview() {
     setStreamError('')
 
     try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
       const text = await startInterview({
         role: config.role,
         interviewType: config.interviewType,
@@ -27,6 +28,7 @@ export function useInterview() {
         state: config.state,
         studentProfile: config.studentProfile,
         totalQuestions: config.totalQuestions || 10,
+        userId: currentUser?.id,
       })
 
       if (!text?.trim()) throw new Error('Empty response from AI. Please try again.')
@@ -91,6 +93,7 @@ export function useInterview() {
         resume_used: !!resumeText,
         sector: sector || 'it_tech',
         exam_type: examType || 'general',
+        question_count: totalQuestions,
       })
       .select()
       .single()
@@ -120,7 +123,7 @@ export function useInterview() {
     const storedData = sessionStorage.getItem(`sd_${id}`)
     const config = storedData
       ? JSON.parse(storedData)
-      : { role: session.role, interviewType: session.interview_type, companyFocus: session.company_focus, resumeText: '' }
+      : { role: session.role, interviewType: session.interview_type, companyFocus: session.company_focus, resumeText: '', totalQuestions: session.question_count || 10 }
 
     setSessionId(id)
     setIsComplete(session.completed)
@@ -206,6 +209,8 @@ export function useInterview() {
       content: feedback.good || '',
       score: feedback.score,
       feedback,
+      correct_answer: feedback.correct_answer || '',
+      topic: feedback.topic || '',
       is_question: false,
     })
 
@@ -220,8 +225,9 @@ export function useInterview() {
 
     const total = sessionData.totalQuestions || 10
     if (currentQ < total) {
-      // 5a. Save next question
-      const nextQuestion = feedback.next_question
+      // 5a. Save next question — guard against empty
+      const nextQuestion = feedback.next_question?.trim()
+      if (!nextQuestion) throw new Error('Could not generate the next question. Please try again.')
       await supabase.from('messages').insert({
         session_id: sessionId,
         question_num: currentQ + 1,
