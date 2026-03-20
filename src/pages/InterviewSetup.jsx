@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   PlayCircle, Warning,
@@ -159,6 +159,10 @@ const EXPERIENCE_OPTIONS = [
   { id: '5plus',   icon: Trophy,        color: '#F59E0B', label: '5+ Years',  sub: 'Senior professional' },
 ]
 
+// ─── Sector ID maps (module-level so hooks can reference them) ───────────────
+const TO_DB   = { 'it-tech':'it_tech','government':'government','banking':'banking','engineering':'engineering','medical':'medical','students':'students','business':'business' }
+const FROM_DB = Object.fromEntries(Object.entries(TO_DB).map(([k,v]) => [v,k]))
+
 // ─── Card Grid (shared inside this file) ────────────────────────────────────
 
 function CardIcon({ icon, color, isSelected }) {
@@ -254,6 +258,7 @@ export default function InterviewSetup() {
 
   const [step, setStep]               = useState('sector')  // sector|role|state|education|type|profile|review
   const [sector, setSector]           = useState('')
+  const [pendingSector, setPendingSector] = useState('')
   const [role, setRole]               = useState('')
   const [state, setState]             = useState('Maharashtra')
   const [education, setEducation]     = useState('')
@@ -263,31 +268,21 @@ export default function InterviewSetup() {
   const [resumeError, setResumeError] = useState('')
   const [questionCount, setQuestionCount] = useState(10)
   const [showSwitchWarning, setShowSwitchWarning] = useState(false)
-  const [primaryReadiness, setPrimaryReadiness]   = useState(null)
   const [savingGoalChange, setSavingGoalChange]   = useState(false)
 
-  // Sector ID mapping between UI format (it-tech) and DB format (it_tech)
-  const TO_DB   = { 'it-tech':'it_tech','government':'government','banking':'banking','engineering':'engineering','medical':'medical','students':'students','business':'business' }
-  const FROM_DB = Object.fromEntries(Object.entries(TO_DB).map(([k,v]) => [v,k]))
+  const primarySector   = userProfile?.primary_sector ?? ''       // DB format
+  const primarySectorUI = FROM_DB[primarySector] ?? primarySector // UI format
+  const primaryLabel    = SECTORS.find(s => s.id === primarySectorUI)?.title ?? primarySector
+  const pendingLabel    = SECTORS.find(s => s.id === pendingSector)?.title ?? pendingSector
 
-  const primarySector    = userProfile?.primary_sector ?? ''          // DB format
-  const primarySectorUI  = FROM_DB[primarySector] ?? primarySector    // UI format
-  const primaryLabel     = SECTORS.find(s => s.id === primarySectorUI)?.title ?? primarySector
-  const selectedLabel    = SECTORS.find(s => s.id === sector)?.title ?? sector
-
-  // Fetch readiness % in primary sector on demand
-  async function loadPrimaryReadiness() {
-    if (!user || !primarySector) return
-    const { data } = await supabase
-      .from('sessions')
-      .select('total_score')
-      .eq('user_id', user.id)
-      .eq('sector', primarySector)
-      .eq('completed', true)
-    if (!data?.length) { setPrimaryReadiness(0); return }
-    const avg = data.reduce((s, r) => s + (r.total_score ?? 0), 0) / data.length
-    setPrimaryReadiness(Math.round(avg * 10))
-  }
+  // Auto-select career goal sector and skip straight to role step on first load
+  useEffect(() => {
+    if (!userProfile?.primary_sector) return
+    const uiSector = FROM_DB[userProfile.primary_sector] ?? userProfile.primary_sector
+    if (!uiSector) return
+    setSector(uiSector)
+    setStep('role')
+  }, [userProfile?.primary_sector])
 
   async function handleFileSelect(e) {
     const file = e.target.files?.[0]
@@ -300,48 +295,48 @@ export default function InterviewSetup() {
 
   // ── Navigation helpers ──────────────────────────────────────────────────
 
-  function handleSectorContinue() {
-    // If user has a primary sector and chose a different one — show warning
-    if (primarySector && TO_DB[sector] !== primarySector) {
-      loadPrimaryReadiness()
+  // Intercept sector card clicks — show modal if user picks a different sector than goal
+  function handleSectorSelect(id) {
+    if (primarySector && TO_DB[id] !== primarySector) {
+      setPendingSector(id)
       setShowSwitchWarning(true)
       return
     }
+    setSector(id)
+  }
+
+  function handleSectorContinue() {
     setRole('')
     setStep('role')
   }
 
+  // Modal: stay on primary goal
   function handleStayPrimary() {
-    setSector(primarySectorUI)
+    setShowSwitchWarning(false)
+    setPendingSector('')
+  }
+
+  // Modal: try pending sector this session only (no DB write)
+  function handleTryThisSession() {
+    setSector(pendingSector)
+    setPendingSector('')
     setShowSwitchWarning(false)
     setRole('')
     setStep('role')
   }
 
-  async function handleExploreAnyway() {
-    setShowSwitchWarning(false)
-    // Log the sector switch as a career insight
-    if (user) {
-      await supabase.from('career_insights').insert({
-        user_id:      user.id,
-        insight_type: 'sector_switch_alert',
-        message:      `Explored ${selectedLabel} while primary goal is ${primaryLabel}`,
-        sector:       TO_DB[sector],
-      })
-    }
-    setRole('')
-    setStep('role')
-  }
-
+  // Modal: permanently change career goal in DB
   async function handleChangePrimary() {
     if (!user) return
     setSavingGoalChange(true)
     await supabase.from('users').update({
-      primary_sector:     TO_DB[sector],
-      career_goal:        selectedLabel,
-      last_active_sector: TO_DB[sector],
+      primary_sector:     TO_DB[pendingSector],
+      career_goal:        pendingLabel,
+      last_active_sector: TO_DB[pendingSector],
     }).eq('id', user.id)
     setSavingGoalChange(false)
+    setSector(pendingSector)
+    setPendingSector('')
     setShowSwitchWarning(false)
     setRole('')
     setStep('role')
@@ -394,8 +389,16 @@ export default function InterviewSetup() {
             {/* Left — sector grid */}
             <div className="lg:col-span-7">
               <p className="text-gray-300 text-sm font-medium mb-4">Which sector are you preparing for?</p>
-              <CardGrid items={SECTORS} selected={sector} onSelect={setSector} cols={3} />
-              <div className="mt-8">
+              <CardGrid items={SECTORS} selected={sector} onSelect={handleSectorSelect} cols={3} />
+              {primarySector ? (
+                <p className="text-xs text-gray-500 mt-3">
+                  Your career goal: <span className="text-gray-400 font-medium">{primaryLabel}</span>
+                  {' '}· Click another sector to change goal
+                </p>
+              ) : sector ? (
+                <p className="text-xs text-gray-500 mt-3">This will become your career goal</p>
+              ) : null}
+              <div className="mt-6">
                 <button
                   type="button"
                   onClick={handleSectorContinue}
@@ -968,70 +971,52 @@ export default function InterviewSetup() {
   // ── Sector switch warning modal ────────────────────────────────────────
 
   if (showSwitchWarning) {
-    const readinessPct = primaryReadiness ?? '…'
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}>
-        <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 20, padding: 32, width: '100%', maxWidth: 480 }}>
+        style={{ background: 'rgba(0,0,0,0.7)' }}>
+        <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 28, width: '100%', maxWidth: 400 }}>
 
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-4">
-            <Warning size={26} color="#F59E0B" />
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>Switching Sectors</h2>
-          </div>
+          <Warning size={32} color="#F59E0B" />
 
-          {/* Warning text */}
-          <p style={{ fontSize: 14, color: '#D1D5DB', lineHeight: 1.6, marginBottom: 16 }}>
-            Your primary goal is <strong style={{ color: '#F9FAFB' }}>{primaryLabel}</strong>.
-            Starting a <strong style={{ color: '#F9FAFB' }}>{selectedLabel}</strong> interview
-            may split your preparation focus.
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#F9FAFB', margin: '12px 0 0' }}>
+            Change your career goal?
+          </h2>
+
+          <p style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.6, margin: '12px 0 20px' }}>
+            You are currently focused on <strong style={{ color: '#F9FAFB' }}>{primaryLabel}</strong>.
+            Switching to <strong style={{ color: '#F9FAFB' }}>{pendingLabel}</strong> may split your preparation focus.
           </p>
 
-          {/* AI advice box */}
-          <div style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 10, padding: '14px 16px', marginBottom: 24 }}>
-            <p style={{ fontSize: 13, color: '#FCD34D', fontWeight: 600, margin: '0 0 6px 0' }}>AI Advice</p>
-            <p style={{ fontSize: 13, color: '#9CA3AF', lineHeight: 1.6, margin: 0 }}>
-              Most successful candidates focus on one sector until they achieve 80% readiness
-              before exploring others. You are currently at{' '}
-              <strong style={{ color: '#F59E0B' }}>{readinessPct}%</strong> in{' '}
-              <strong style={{ color: '#F9FAFB' }}>{primaryLabel}</strong>.
-            </p>
-          </div>
+          {/* Button 1 — stay on goal */}
+          <button
+            onClick={handleStayPrimary}
+            style={{ display: 'block', width: '100%', height: 48, background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
+            onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
+          >
+            Continue with {primaryLabel}
+          </button>
 
-          {/* Action buttons */}
-          <div className="space-y-3">
-            {/* Button 1 — stay primary */}
-            <button
-              onClick={handleStayPrimary}
-              className="w-full font-bold text-sm transition-all"
-              style={{ background: '#2563EB', color: '#fff', border: 'none', borderRadius: 10, padding: '13px 20px', cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.background = '#1D4ED8'}
-              onMouseLeave={e => e.currentTarget.style.background = '#2563EB'}
-            >
-              Continue {primaryLabel} Preparation
-            </button>
+          {/* Button 2 — try this session only */}
+          <button
+            onClick={handleTryThisSession}
+            style={{ display: 'block', width: '100%', height: 44, marginTop: 8, background: 'transparent', color: '#94A3B8', border: '1px solid #374151', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#6B7280'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#374151'}
+          >
+            Try {pendingLabel} this session only
+          </button>
 
-            {/* Button 2 — explore anyway */}
-            <button
-              onClick={handleExploreAnyway}
-              className="w-full text-sm transition-all"
-              style={{ background: 'transparent', color: '#D1D5DB', border: '1px solid #4B5563', borderRadius: 10, padding: '12px 20px', cursor: 'pointer' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#6B7280'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#4B5563'}
-            >
-              Explore {selectedLabel} Anyway
-            </button>
-
-            {/* Button 3 — change primary */}
-            <button
-              onClick={handleChangePrimary}
-              disabled={savingGoalChange}
-              className="w-full text-sm transition-colors"
-              style={{ background: 'transparent', color: '#6B7280', border: 'none', padding: '8px', cursor: 'pointer' }}
-            >
-              {savingGoalChange ? 'Saving…' : `Change my career goal to ${selectedLabel}`}
-            </button>
-          </div>
+          {/* Button 3 — change goal permanently */}
+          <button
+            onClick={handleChangePrimary}
+            disabled={savingGoalChange}
+            style={{ display: 'block', width: '100%', marginTop: 12, background: 'transparent', border: 'none', fontSize: 12, color: '#64748B', cursor: 'pointer', textAlign: 'center' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
+            onMouseLeave={e => e.currentTarget.style.color = '#64748B'}
+          >
+            {savingGoalChange ? 'Saving…' : `Change my career goal to ${pendingLabel}`}
+          </button>
         </div>
       </div>
     )

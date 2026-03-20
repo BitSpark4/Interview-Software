@@ -301,13 +301,6 @@ export default function InterviewSession() {
         </div>
       </header>
 
-      {/* ── Question stepper ─────────────────────────────────── */}
-      <SessionProgress
-        questionNumber={questionNumber}
-        totalQuestions={totalQuestions}
-        hasAnsweredCurrent={hasAnsweredCurrentQ}
-      />
-
       {/* ── Two-panel body ───────────────────────────────────── */}
       <div className="flex-1 flex overflow-hidden">
 
@@ -380,32 +373,6 @@ export default function InterviewSession() {
                 <p className="text-red-400 text-sm mt-3">{streamError}</p>
               )}
             </div>
-
-            {/* Progress indicator card */}
-            {currentQuestion?.content?.trim() && !loading && (
-              <div
-                className="rounded-xl p-4"
-                style={{ background: '#111827', border: '1px solid #1F2937' }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-300 text-xs font-mono font-semibold">
-                    Question {questionNumber} of {totalQuestions}
-                  </span>
-                  <span className="text-blue-400 text-xs font-mono font-bold">
-                    {Math.round((questionNumber / totalQuestions) * 100)}%
-                  </span>
-                </div>
-                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: '#1F2937' }}>
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${Math.round((questionNumber / totalQuestions) * 100)}%`,
-                      background: 'linear-gradient(90deg, #2563EB, #60A5FA)',
-                    }}
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Collapsible "How to answer well" guide */}
             {currentQuestion?.content?.trim() && !hasAnsweredCurrentQ && !loading && (
