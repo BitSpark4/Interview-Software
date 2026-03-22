@@ -730,11 +730,25 @@ export default function InterviewSession() {
               {/* Speech error */}
               {speechError && (
                 <div style={{
-                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                  borderRadius: 8, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
-                  <span style={{ fontSize: 14 }}>⚠️</span>
-                  <span style={{ color: '#FCA5A5', fontSize: 13 }}>{speechError}</span>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>⚠️</span>
+                    <span style={{ color: '#FCA5A5', fontSize: 13, lineHeight: 1.5 }}>{speechError}</span>
+                  </div>
+                  {speechError.includes('lock icon') && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', borderRadius: 6, padding: '8px 12px' }}>
+                      <p style={{ color: '#FCA5A5', fontSize: 12, margin: '0 0 4px', fontWeight: 600 }}>How to fix in Chrome:</p>
+                      <ol style={{ color: '#94A3B8', fontSize: 12, paddingLeft: 16, margin: 0, lineHeight: 1.8 }}>
+                        <li>Click the lock icon in the address bar</li>
+                        <li>Click "Site settings"</li>
+                        <li>Find "Microphone"</li>
+                        <li>Change to "Allow"</li>
+                        <li>Refresh this page</li>
+                      </ol>
+                    </div>
+                  )}
                 </div>
               )}
 

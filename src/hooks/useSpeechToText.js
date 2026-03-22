@@ -1,3 +1,9 @@
+// Speech recognition only works on:
+//   https:// domains (production)
+//   localhost / 127.0.0.1 (local dev via netlify dev)
+//   NOT on 192.168.x.x local network IP
+// If testing locally always use: netlify dev (not npm run dev with network IP)
+
 import { useState, useRef, useCallback } from 'react'
 
 const useSpeechToText = () => {
@@ -12,33 +18,48 @@ const useSpeechToText = () => {
   const recognitionRef = useRef(null)
 
   const startListening = useCallback(async (onTranscript, lang = 'en-IN') => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      setIsSupported(false)
-      setError('Speech recognition not supported in this browser. Use Chrome or Edge.')
+
+    // FIX 1 — Reject non-secure contexts (192.168.x.x, plain HTTP)
+    const isSecureContext =
+      window.isSecureContext ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+
+    if (!isSecureContext) {
+      setError('Microphone requires HTTPS. Voice input works on getinterviewiq.in or via netlify dev on localhost.')
       return
     }
 
-    // Check mic permission state without requesting it
-    // If already denied → tell user how to fix in settings
-    // If granted or prompt → proceed (SpeechRecognition handles its own popup)
+    // FIX 2 — Request mic permission explicitly via getUserMedia first
+    // This reliably triggers Chrome's permission popup before starting recognition
     try {
-      const permission = await navigator.permissions.query({ name: 'microphone' })
-      if (permission.state === 'denied') {
-        setError('Microphone is blocked. Click the 🔒 icon in your address bar → Site settings → Microphone → Allow.')
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      stream.getTracks().forEach(t => t.stop())
+    } catch (err) {
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setError('Microphone blocked. Click the lock icon in address bar → Site settings → Microphone → Allow → Refresh page.')
         return
       }
-    } catch {
-      // permissions API not supported in this browser — just proceed
+      if (err.name === 'NotFoundError') {
+        setError('No microphone found on this device.')
+        return
+      }
+      setError('Could not access microphone. Please check your device settings.')
+      return
     }
 
-    setError(null)
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setIsSupported(false)
+      setError('Use Chrome or Edge for voice input.')
+      return
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     recognitionRef.current = new SpeechRecognition()
 
-    recognitionRef.current.continuous      = true
-    recognitionRef.current.interimResults  = true
-    recognitionRef.current.lang            = lang
+    recognitionRef.current.continuous     = true
+    recognitionRef.current.interimResults = true
+    recognitionRef.current.lang           = lang || localStorage.getItem('interviewiq-speech-lang') || 'en-IN'
     recognitionRef.current.maxAlternatives = 1
 
     let finalTranscript = ''
@@ -50,34 +71,35 @@ const useSpeechToText = () => {
     }
 
     recognitionRef.current.onresult = (event) => {
-      let interimTranscript = ''
+      let interim = ''
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const t = event.results[i][0].transcript
         if (event.results[i].isFinal) {
           finalTranscript += t + ' '
         } else {
-          interimTranscript += t
+          interim += t
         }
       }
-      const fullText = finalTranscript + interimTranscript
-      setTranscript(fullText)
-      if (onTranscript) onTranscript(fullText)
+      const full = finalTranscript + interim
+      setTranscript(full)
+      if (onTranscript) onTranscript(full)
     }
 
-    recognitionRef.current.onerror = (event) => {
-      console.error('SpeechRecognition error:', event.error)
+    recognitionRef.current.onerror = (e) => {
+      console.error('SpeechRecognition error:', e.error)
       setIsListening(false)
-      if (event.error === 'not-allowed') {
-        setError('Microphone is blocked. Click the 🔒 icon in your address bar → Site settings → Microphone → Allow.')
-      } else if (event.error === 'no-speech') {
-        setError('No speech detected. Please try again.')
-      } else if (event.error === 'network') {
+      if (e.error === 'not-allowed') {
+        setError('Permission denied. Click the lock icon in address bar → Microphone → Allow → Refresh.')
+      } else if (e.error === 'no-speech') {
+        setError('No speech heard. Please speak clearly.')
+      } else if (e.error === 'audio-capture') {
+        setError('Microphone not accessible. Check browser settings.')
+      } else if (e.error === 'network') {
         setError('Network error. Check your internet connection and try again.')
-      } else if (event.error === 'aborted') {
-        // User stopped it — not an error
+      } else if (e.error === 'aborted') {
         setError(null)
       } else {
-        setError(`Error: ${event.error}. Please try again.`)
+        setError(`Error: ${e.error}. Please try again.`)
       }
     }
 
@@ -88,16 +110,14 @@ const useSpeechToText = () => {
     try {
       recognitionRef.current.start()
     } catch (err) {
-      console.error('SpeechRecognition start error:', err)
+      console.error('SpeechRecognition start failed:', err)
       setError('Could not start microphone. Please refresh the page and try again.')
       setIsListening(false)
     }
   }, [])
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-    }
+    if (recognitionRef.current) recognitionRef.current.stop()
     setIsListening(false)
   }, [])
 
