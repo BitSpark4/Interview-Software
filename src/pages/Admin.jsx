@@ -21,6 +21,7 @@ function scoreColor(v) {
 }
 
 function getLastActive(lastActiveAt, lastLoginAt) {
+  console.log('last_active_at:', lastActiveAt, '| last_login_at:', lastLoginAt)
   // Use last_active_at first, fall back to last_login_at for users who joined before tracking
   const ts = lastActiveAt || lastLoginAt
   if (!ts) return { label: 'Never', color: '#EF4444' }
@@ -400,15 +401,35 @@ export default function Admin() {
               <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>Search, change plans and manage users</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span style={{ fontSize: 12, color: '#94A3B8', background: '#1E293B', border: '1px solid #334155', borderRadius: 6, padding: '3px 10px' }}>
+              {/* Total pill */}
+              <button onClick={() => { setUserFilter('all'); setUserPage(0) }} style={{
+                fontSize: 12, color: userFilter === 'all' ? '#F8FAFC' : '#94A3B8',
+                background: '#1E293B', border: `1px solid ${userFilter === 'all' ? '#F8FAFC' : '#334155'}`,
+                borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+                opacity: userFilter === 'all' ? 1 : 0.5, transition: 'all 150ms',
+              }}>
                 Total: {allUsers.length}
-              </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '3px 10px' }}>
+              </button>
+              {/* Pro pill */}
+              <button onClick={() => { setUserFilter('pro'); setUserPage(0) }} style={{
+                fontSize: 12, fontWeight: 600,
+                color: userFilter === 'pro' ? '#F8FAFC' : '#F59E0B',
+                background: 'rgba(245,158,11,0.12)',
+                border: `1px solid ${userFilter === 'pro' ? '#F8FAFC' : 'rgba(245,158,11,0.25)'}`,
+                borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+                opacity: userFilter === 'pro' ? 1 : 0.5, transition: 'all 150ms',
+              }}>
                 Pro: {allUsers.filter(u => u.plan === 'pro').length}
-              </span>
-              <span style={{ fontSize: 12, color: '#64748B', background: '#1E293B', border: '1px solid #334155', borderRadius: 6, padding: '3px 10px' }}>
+              </button>
+              {/* Free pill */}
+              <button onClick={() => { setUserFilter('free'); setUserPage(0) }} style={{
+                fontSize: 12, color: userFilter === 'free' ? '#F8FAFC' : '#64748B',
+                background: '#1E293B', border: `1px solid ${userFilter === 'free' ? '#F8FAFC' : '#334155'}`,
+                borderRadius: 6, padding: '3px 10px', cursor: 'pointer',
+                opacity: userFilter === 'free' ? 1 : 0.5, transition: 'all 150ms',
+              }}>
                 Free: {allUsers.filter(u => u.plan !== 'pro').length}
-              </span>
+              </button>
             </div>
           </div>
 

@@ -18,20 +18,20 @@ const useSpeechToText = () => {
       return
     }
 
-    // Explicitly request mic permission first — this triggers Chrome's native popup
+    // Check mic permission state without requesting it
+    // If already denied → tell user how to fix in settings
+    // If granted or prompt → proceed (SpeechRecognition handles its own popup)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // Stop the stream immediately — we only needed it to get permission
-      stream.getTracks().forEach(t => t.stop())
-      setError(null)
-    } catch (permErr) {
-      if (permErr.name === 'NotAllowedError' || permErr.name === 'PermissionDeniedError') {
-        setError('Microphone blocked. Click the 🔒 icon in your browser address bar → Site settings → Allow Microphone, then try again.')
-      } else {
-        setError('Could not access microphone. Please check your device settings.')
+      const permission = await navigator.permissions.query({ name: 'microphone' })
+      if (permission.state === 'denied') {
+        setError('Microphone is blocked. Click the 🔒 icon in your address bar → Site settings → Microphone → Allow.')
+        return
       }
-      return
+    } catch {
+      // permissions API not supported in this browser — just proceed
     }
+
+    setError(null)
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     recognitionRef.current = new SpeechRecognition()
@@ -46,6 +46,7 @@ const useSpeechToText = () => {
     recognitionRef.current.onstart = () => {
       setIsListening(true)
       setError(null)
+      finalTranscript = ''
     }
 
     recognitionRef.current.onresult = (event) => {
@@ -64,13 +65,19 @@ const useSpeechToText = () => {
     }
 
     recognitionRef.current.onerror = (event) => {
+      console.error('SpeechRecognition error:', event.error)
       setIsListening(false)
       if (event.error === 'not-allowed') {
-        setError('Microphone blocked. Click the 🔒 icon in your address bar → Allow Microphone.')
+        setError('Microphone is blocked. Click the 🔒 icon in your address bar → Site settings → Microphone → Allow.')
       } else if (event.error === 'no-speech') {
         setError('No speech detected. Please try again.')
+      } else if (event.error === 'network') {
+        setError('Network error. Check your internet connection and try again.')
+      } else if (event.error === 'aborted') {
+        // User stopped it — not an error
+        setError(null)
       } else {
-        setError('Speech recognition error. Please try again.')
+        setError(`Error: ${event.error}. Please try again.`)
       }
     }
 
@@ -80,14 +87,17 @@ const useSpeechToText = () => {
 
     try {
       recognitionRef.current.start()
-    } catch {
-      setError('Could not start microphone.')
+    } catch (err) {
+      console.error('SpeechRecognition start error:', err)
+      setError('Could not start microphone. Please refresh the page and try again.')
       setIsListening(false)
     }
   }, [])
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current) recognitionRef.current.stop()
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
     setIsListening(false)
   }, [])
 

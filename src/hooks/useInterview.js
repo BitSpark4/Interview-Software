@@ -99,6 +99,9 @@ export function useInterview() {
       .single()
     if (error) throw new Error(`Could not create session: ${error.message}`)
 
+    // Update last_active_at when user starts an interview
+    supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', user.id).then(() => {})
+
     // Store config so loadSession can call Claude on first load
     sessionStorage.setItem(`sd_${session.id}`, JSON.stringify(config))
 
@@ -296,11 +299,12 @@ export function useInterview() {
           : 1                              // gap — restart streak
 
         await supabase.from('users').update({
-          interviews_used: (profile.interviews_used || 0) + 1,
-          total_sessions:  newTotal,
-          average_score:   newAvg,
-          streak_count:    newStreak,
+          interviews_used:   (profile.interviews_used || 0) + 1,
+          total_sessions:    newTotal,
+          average_score:     newAvg,
+          streak_count:      newStreak,
           last_session_date: today,
+          last_active_at:    new Date().toISOString(),
         }).eq('id', user.id)
       }
 
