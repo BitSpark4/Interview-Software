@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Clock, XCircle, PaperPlaneTilt, CheckCircle, Warning,
   Lightbulb, Brain, CircleNotch, Microphone,
 } from '@phosphor-icons/react'
 import { useInterview } from '../hooks/useInterview'
+import useSpeechToText from '../hooks/useSpeechToText'
 import { useAuth } from '../hooks/useAuth'
 import { saveAskedQuestion } from '../lib/claudeApi'
 import { BrainLoadingAnimation, ConfettiAnimation, MicAnimation } from '../components/LottieAnimation'
@@ -166,6 +167,34 @@ export default function InterviewSession() {
   const [input, setInput]           = useState('')
   const [error, setError]           = useState('')
   const [showExit, setShowExit]     = useState(false)
+
+  // ── Speech to text ────────────────────────────────────────────────────────
+  const [speechLang, setSpeechLang] = useState(
+    () => localStorage.getItem('interviewiq-speech-lang') || 'en-IN'
+  )
+  const {
+    isListening, transcript, error: speechError, isSupported,
+    startListening, stopListening, resetTranscript,
+  } = useSpeechToText()
+
+  useEffect(() => {
+    if (transcript) setInput(transcript)
+  }, [transcript])
+
+  const handleMicToggle = useCallback(() => {
+    if (isListening) {
+      stopListening()
+    } else {
+      resetTranscript()
+      startListening((text) => setInput(text), speechLang)
+    }
+  }, [isListening, speechLang, startListening, stopListening, resetTranscript])
+
+  const handleLangSwitch = (lang) => {
+    setSpeechLang(lang)
+    localStorage.setItem('interviewiq-speech-lang', lang)
+    if (isListening) stopListening()
+  }
   const [showConfetti, setShowConfetti] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [initLoading, setInitLoading] = useState(true)
@@ -559,34 +588,137 @@ export default function InterviewSession() {
               <style>{`@keyframes progfill { from { width: 10%; } to { width: 85%; } }`}</style>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col h-full p-6 gap-4">
-              {/* Header */}
-              <div>
+            <form onSubmit={handleSubmit} className="flex flex-col h-full p-6 gap-3">
+
+              {/* Header row: label + hints + mic controls */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <p className="text-white font-semibold text-sm">Your Answer</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono" style={{ color: '#64748B' }}>Ctrl+Enter to submit</span>
+
+                  {/* Mic + lang pill */}
+                  <div
+                    className="flex items-center gap-1"
+                    style={{ background: '#1E293B', border: '1px solid #334155', borderRadius: 8, padding: '3px 6px' }}
+                  >
+                    {/* EN / HI toggle */}
+                    {isSupported && (
+                      <>
+                        {['en-IN', 'hi-IN'].map(lang => (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() => handleLangSwitch(lang)}
+                            style={{
+                              fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 5,
+                              border: 'none', cursor: 'pointer',
+                              background: speechLang === lang ? '#2563EB' : 'transparent',
+                              color: speechLang === lang ? '#fff' : '#64748B',
+                              transition: 'all 150ms',
+                            }}
+                          >
+                            {lang === 'en-IN' ? 'EN' : 'HI'}
+                          </button>
+                        ))}
+                        <div style={{ width: 1, height: 16, background: '#334155', margin: '0 2px' }} />
+                      </>
+                    )}
+
+                    {/* Listening label */}
+                    <span style={{ fontSize: 11, color: isListening ? '#EF4444' : '#64748B', minWidth: 52 }}>
+                      {isListening ? 'Listening…' : isSupported ? 'Speak' : 'No mic'}
+                    </span>
+
+                    {/* Mic button */}
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        type="button"
+                        onClick={isSupported ? handleMicToggle : undefined}
+                        disabled={loading || hasAnsweredCurrentQ}
+                        title={!isSupported ? 'Voice input requires Chrome or Edge browser' : undefined}
+                        style={{
+                          width: 32, height: 32, borderRadius: '50%', border: 'none',
+                          cursor: !isSupported || loading || hasAnsweredCurrentQ ? 'not-allowed' : 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: !isSupported ? '#334155' : isListening ? '#EF4444' : '#2563EB',
+                          opacity: !isSupported ? 0.4 : 1,
+                          transition: 'all 200ms', position: 'relative', flexShrink: 0,
+                        }}
+                      >
+                        {isListening ? (
+                          /* Stop square */
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="white">
+                            <rect x="1" y="1" width="10" height="10" rx="2" />
+                          </svg>
+                        ) : (
+                          /* Mic icon */
+                          <svg width="14" height="14" viewBox="0 0 14 14" fill="white">
+                            <rect x="5" y="1" width="4" height="8" rx="2" />
+                            <path d="M2 7c0 2.8 2.2 5 5 5s5-2.2 5-5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                            <line x1="7" y1="12" x2="7" y2="14" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        )}
+                      </button>
+                      {/* Pulse ring when listening */}
+                      {isListening && (
+                        <div style={{
+                          position: 'absolute', inset: -4, borderRadius: '50%',
+                          border: '2px solid #EF4444', opacity: 0.6,
+                          animation: 'micpulse 1s ease-in-out infinite',
+                          pointerEvents: 'none',
+                        }} />
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Textarea + char count */}
+              {/* Textarea */}
               <div className="relative flex-1">
                 <div
                   className="rounded-xl overflow-hidden transition-all duration-200 h-full"
                   style={{
-                    border: `1px solid ${input.length > 0 ? 'rgba(37,99,235,0.3)' : '#1E2D45'}`,
+                    border: `1px solid ${isListening ? '#EF4444' : input.length > 0 ? 'rgba(37,99,235,0.3)' : '#1E2D45'}`,
                     background: '#0B1120',
-                    boxShadow: input.length > 0 ? '0 0 0 3px rgba(37,99,235,0.05)' : 'none',
+                    boxShadow: isListening ? '0 0 0 3px rgba(239,68,68,0.06)' : input.length > 0 ? '0 0 0 3px rgba(37,99,235,0.05)' : 'none',
                   }}
                 >
                   <textarea
                     ref={textareaRef}
                     value={input}
-                    onChange={e => setInput(e.target.value)}
+                    onChange={e => { setInput(e.target.value); if (isListening) stopListening() }}
                     onKeyDown={handleKeyDown}
-                    placeholder={`Type your answer here…\n\nBe specific. Use real examples. Think out loud.`}
+                    placeholder={isListening
+                      ? 'Speak now — your words will appear here…'
+                      : 'Type your answer here…\n\nBe specific. Use real examples. Think out loud.'}
                     disabled={loading || hasAnsweredCurrentQ}
                     className="w-full h-full min-h-[200px] bg-transparent text-gray-100 px-5 py-4 pb-7 text-sm outline-none resize-none disabled:opacity-50 leading-relaxed placeholder-gray-700"
                     style={{ fontFamily: 'inherit' }}
                   />
                 </div>
-                {/* Character count — bottom right of textarea */}
+
+                {/* Recording indicator bar */}
+                {isListening && (
+                  <div style={{
+                    position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)',
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
+                    borderRadius: 20, padding: '4px 14px', pointerEvents: 'none',
+                  }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', animation: 'micpulse 1s infinite' }} />
+                    <span style={{ color: '#EF4444', fontSize: 12, fontWeight: 500 }}>Recording — speak clearly</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginLeft: 4 }}>
+                      {[6, 10, 8, 12].map((h, i) => (
+                        <div key={i} style={{
+                          width: 3, borderRadius: 2, background: '#EF4444',
+                          height: h, animation: `wavebar 0.6s ease-in-out ${i * 0.12}s infinite alternate`,
+                        }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Char count */}
                 <span
                   className="absolute bottom-2 right-3 font-mono text-xs pointer-events-none select-none"
                   style={{ color: input.length > 1800 ? '#EF4444' : input.length > 50 ? '#4ADE80' : '#374151' }}
@@ -595,41 +727,56 @@ export default function InterviewSession() {
                 </span>
               </div>
 
+              {/* Speech error */}
+              {speechError && (
+                <div style={{
+                  background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+                  borderRadius: 8, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <span style={{ fontSize: 14 }}>⚠️</span>
+                  <span style={{ color: '#FCA5A5', fontSize: 13 }}>{speechError}</span>
+                </div>
+              )}
+
+              {/* Validation error */}
               {error && (
                 <p className="text-red-400 text-xs flex items-center gap-1.5">
                   <Warning size={12} /> {error}
                 </p>
               )}
 
-              {/* Submit */}
+              {/* Clear + Submit row */}
+              <div className="flex items-center justify-between">
+                {input.length > 0 && !isListening ? (
+                  <button type="button" onClick={() => { setInput(''); resetTranscript() }}
+                    style={{ background: 'none', border: 'none', color: '#64748B', fontSize: 12, cursor: 'pointer' }}>
+                    Clear
+                  </button>
+                ) : <span />}
+              </div>
+
               <button
                 type="submit"
-                disabled={loading || !input.trim() || hasAnsweredCurrentQ}
-                className="w-full flex items-center justify-center gap-2 font-bold text-sm rounded-xl transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={loading || !input.trim() || hasAnsweredCurrentQ || isListening}
+                className="w-full flex items-center justify-center gap-2 font-bold text-sm rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
                 style={{
                   height: 52,
-                  background: loading || !input.trim() || hasAnsweredCurrentQ
-                    ? '#1E293B'
-                    : '#2563EB',
-                  color: loading || !input.trim() || hasAnsweredCurrentQ ? '#475569' : '#fff',
-                  boxShadow: !loading && input.trim() && !hasAnsweredCurrentQ
-                    ? '0 4px 20px rgba(37,99,235,0.3)'
-                    : 'none',
+                  background: loading || !input.trim() || hasAnsweredCurrentQ || isListening ? '#1E293B' : '#2563EB',
+                  color: loading || !input.trim() || hasAnsweredCurrentQ || isListening ? '#475569' : '#fff',
+                  boxShadow: !loading && input.trim() && !hasAnsweredCurrentQ && !isListening ? '0 4px 20px rgba(37,99,235,0.3)' : 'none',
                 }}
               >
                 {loading ? (
                   <CircleNotch size={16} className="animate-spin" />
-                ) : (
+                ) : isListening ? null : (
                   <PaperPlaneTilt size={16} />
                 )}
                 <span>
-                  {loading ? 'Evaluating…' : hasAnsweredCurrentQ ? 'Answered' : 'Submit Answer'}
+                  {loading ? 'Evaluating…' : isListening ? 'Stop recording to submit' : hasAnsweredCurrentQ ? 'Answered' : 'Submit Answer'}
                 </span>
-                {!loading && !hasAnsweredCurrentQ && (
-                  <span
-                    className="ml-2 text-[10px] font-mono font-normal opacity-60 hidden sm:inline"
-                    style={{ color: input.trim() ? '#fff' : '#475569' }}
-                  >
+                {!loading && !isListening && !hasAnsweredCurrentQ && (
+                  <span className="ml-2 text-[10px] font-mono font-normal opacity-60 hidden sm:inline"
+                    style={{ color: input.trim() ? '#fff' : '#475569' }}>
                     Ctrl+Enter
                   </span>
                 )}
@@ -656,13 +803,17 @@ export default function InterviewSession() {
               <div className="relative">
                 <textarea
                   value={input}
-                  onChange={e => setInput(e.target.value)}
+                  onChange={e => { setInput(e.target.value); if (isListening) stopListening() }}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your answer…"
+                  placeholder={isListening ? 'Speak now…' : 'Type your answer…'}
                   disabled={loading || hasAnsweredCurrentQ}
                   rows={3}
                   className="w-full text-white text-sm px-3 py-2.5 pb-6 outline-none resize-none disabled:opacity-50 rounded-xl leading-relaxed placeholder-gray-700"
-                  style={{ background: '#111827', border: '1px solid #1E2D45', fontFamily: 'inherit' }}
+                  style={{
+                    background: '#111827',
+                    border: `1px solid ${isListening ? '#EF4444' : '#1E2D45'}`,
+                    fontFamily: 'inherit',
+                  }}
                 />
                 <span
                   className="absolute bottom-1.5 right-2.5 font-mono text-[10px] pointer-events-none select-none"
@@ -671,16 +822,50 @@ export default function InterviewSession() {
                   {input.length} / 2000
                 </span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 text-[10px]">Ctrl+Enter to submit</span>
+              {speechError && (
+                <p style={{ color: '#FCA5A5', fontSize: 11 }}>⚠️ {speechError}</p>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-600 text-[10px]">Ctrl+Enter</span>
+                  {/* Mobile mic button */}
+                  {isSupported && (
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        type="button"
+                        onClick={handleMicToggle}
+                        disabled={loading || hasAnsweredCurrentQ}
+                        style={{
+                          width: 28, height: 28, borderRadius: '50%', border: 'none',
+                          background: isListening ? '#EF4444' : '#2563EB',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', flexShrink: 0,
+                        }}
+                      >
+                        {isListening ? (
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="white"><rect x="1" y="1" width="8" height="8" rx="1.5" /></svg>
+                        ) : (
+                          <svg width="12" height="12" viewBox="0 0 14 14" fill="white">
+                            <rect x="5" y="1" width="4" height="8" rx="2" />
+                            <path d="M2 7c0 2.8 2.2 5 5 5s5-2.2 5-5" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                            <line x1="7" y1="12" x2="7" y2="14" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        )}
+                      </button>
+                      {isListening && (
+                        <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', border: '2px solid #EF4444', opacity: 0.5, animation: 'micpulse 1s infinite', pointerEvents: 'none' }} />
+                      )}
+                    </div>
+                  )}
+                </div>
                 <button
                   type="submit"
-                  disabled={loading || !input.trim() || hasAnsweredCurrentQ}
+                  disabled={loading || !input.trim() || hasAnsweredCurrentQ || isListening}
                   className="flex items-center gap-1.5 text-white font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-40 text-sm"
-                  style={{ background: '#2563EB' }}
+                  style={{ background: isListening ? '#334155' : '#2563EB' }}
                 >
                   {loading ? <CircleNotch size={14} className="animate-spin" /> : <PaperPlaneTilt size={14} />}
-                  {loading ? 'Evaluating…' : 'Submit'}
+                  {loading ? 'Evaluating…' : isListening ? 'Stop first' : 'Submit'}
                 </button>
               </div>
             </form>
