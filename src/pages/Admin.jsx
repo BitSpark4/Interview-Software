@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ShieldStar, Users, Crown, UserCircle, Target, ChartLineUp,
   ChartBar, ArrowCounterClockwise, CheckCircle,
+  MagnifyingGlass, ArrowDown, CaretLeft, CaretRight, X,
 } from '@phosphor-icons/react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -17,6 +18,25 @@ function scoreColor(v) {
   if (v >= 7) return '#22C55E'
   if (v >= 5) return '#F59E0B'
   return '#EF4444'
+}
+
+function getLastActive(lastActiveAt, lastLoginAt) {
+  // Use last_active_at first, fall back to last_login_at for users who joined before tracking
+  const ts = lastActiveAt || lastLoginAt
+  if (!ts) return { label: 'Never', color: '#EF4444' }
+  const diffMs    = Date.now() - new Date(ts)
+  const diffMins  = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays  = Math.floor(diffHours / 24)
+  if (diffMins < 5)   return { label: 'Online now', color: '#22C55E', pulse: true }
+  if (diffMins < 60)  return { label: `${diffMins}m ago`, color: '#2563EB' }
+  if (diffHours < 24) return { label: `${diffHours}h ago`, color: '#2563EB' }
+  if (diffDays === 1) return { label: 'Yesterday', color: '#64748B' }
+  if (diffDays < 7)   return { label: `${diffDays}d ago`, color: '#64748B' }
+  return {
+    label: new Date(ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+    color: '#EF4444',
+  }
 }
 
 const CARD = {
@@ -51,8 +71,16 @@ export default function Admin() {
   const [loading, setLoading]   = useState(true)
   const [fetchError, setFetchError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
-  const [page, setPage]         = useState(0)
-  const PAGE_SIZE = 20
+  // ── User Management state ──────────────────────────────────────────────────
+  const [allUsers, setAllUsers]         = useState([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [userSearch, setUserSearch]     = useState('')
+  const [userFilter, setUserFilter]     = useState('all')
+  const [userPage, setUserPage]         = useState(0)
+  const [userPageSize, setUserPageSize] = useState(10)
+  const [confirmModal, setConfirmModal] = useState(null)   // { user, newPlan }
+  const [confirmLoading, setConfirmLoading] = useState(false)
+  const [toast, setToast]               = useState(null)   // { msg }
 
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
@@ -88,6 +116,87 @@ export default function Admin() {
     return () => clearInterval(interval)
   }, [fetchStats])
 
+  // ── User Management fetch ──────────────────────────────────────────────────
+  const fetchAllUsers = useCallback(async () => {
+    setUsersLoading(true)
+    try {
+      const { data: rows, error } = await supabase.rpc('get_all_users_for_admin')
+      if (error) throw error
+      setAllUsers(rows || [])
+    } catch (err) {
+      console.error('Failed to load users:', err)
+    } finally {
+      setUsersLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchAllUsers() }, [fetchAllUsers])
+
+  const filteredUsers = useMemo(() => {
+    let list = allUsers
+    if (userSearch.trim()) {
+      const q = userSearch.toLowerCase()
+      list = list.filter(u =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.email || '').toLowerCase().includes(q)
+      )
+    }
+    const now = Date.now()
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000)
+    const oneDayAgo    = new Date(now - 24 * 60 * 60 * 1000)
+    if (userFilter === 'pro')          list = list.filter(u => u.plan === 'pro')
+    else if (userFilter === 'free')        list = list.filter(u => u.plan !== 'pro')
+    else if (userFilter === 'active_today') list = list.filter(u => u.last_active_at && new Date(u.last_active_at) >= oneDayAgo)
+    else if (userFilter === 'active_week')  list = list.filter(u => u.last_active_at && new Date(u.last_active_at) >= sevenDaysAgo)
+    else if (userFilter === 'never')        list = list.filter(u => !u.last_active_at)
+    return list
+  }, [allUsers, userSearch, userFilter])
+
+  const totalUserPages = Math.ceil(filteredUsers.length / userPageSize)
+  const pagedUsers = filteredUsers.slice(userPage * userPageSize, (userPage + 1) * userPageSize)
+
+  const handlePlanChange = async () => {
+    if (!confirmModal) return
+    setConfirmLoading(true)
+    try {
+      const { user, newPlan } = confirmModal
+
+      // Use SECURITY DEFINER RPC — bypasses RLS so admin can update any user
+      const { error: planError } = await supabase.rpc('admin_change_user_plan', {
+        target_user_id: user.id,
+        new_plan: newPlan,
+      })
+      if (planError) throw planError
+
+      // Log audit entry
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      await supabase.from('admin_actions').insert({
+        admin_id: authSession?.user?.id,
+        action_type: 'plan_change',
+        target_user_id: user.id,
+        details: `Changed from ${user.plan} to ${newPlan}`,
+      })
+
+      // Refresh list so badge updates immediately
+      await fetchAllUsers()
+
+      setConfirmModal(null)
+      setToast({
+        type: newPlan === 'pro' ? 'success' : 'info',
+        msg: newPlan === 'pro'
+          ? `✓ ${user.name || user.email} upgraded to Pro`
+          : `✓ ${user.name || user.email} downgraded to Free`,
+      })
+      setTimeout(() => setToast(null), 4000)
+    } catch (err) {
+      console.error('Plan change failed:', err)
+      setToast({ type: 'error', msg: `Failed: ${err.message}` })
+      setTimeout(() => setToast(null), 4000)
+    } finally {
+      setConfirmLoading(false)
+    }
+  }
+
   const s = data?.stats
   const growthChart = data?.growth_chart || []
   const roleChart   = Object.entries(data?.role_distribution || {})
@@ -96,9 +205,6 @@ export default function Admin() {
   const typeChart   = Object.entries(data?.type_distribution || {})
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
-  const recentUsers = data?.recent_users || []
-  const paginatedUsers = recentUsers.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
-
   const pieData = s ? [
     { name: 'Pro', value: s.pro_users, color: '#F59E0B' },
     { name: 'Free', value: s.free_users, color: '#1F2937' },
@@ -263,79 +369,7 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Row 4 — Recent users table */}
-        <div style={{ ...CARD, padding: 24, marginBottom: 24 }}>
-          <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
-            <div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', margin: 0 }}>Recent User Signups</p>
-              <p style={{ fontSize: 12, color: '#6B7280' }}>Last {recentUsers.length} users who joined</p>
-            </div>
-          </div>
-
-          {loading && !data ? (
-            <div className="flex justify-center" style={{ padding: 32 }}><Spinner size={20} color="border-blue-500" /></div>
-          ) : (
-            <>
-              {/* Table header */}
-              <div className="hidden md:grid" style={{
-                gridTemplateColumns: '2fr 2fr 1fr 1fr 1fr 1fr 1fr',
-                paddingBottom: 10, borderBottom: '1px solid #1F2937', gap: 12,
-              }}>
-                {['NAME', 'EMAIL', 'PLAN', 'JOINED', 'SESSIONS', 'AVG SCORE', 'STATUS'].map(h => (
-                  <p key={h} style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{h}</p>
-                ))}
-              </div>
-
-              {paginatedUsers.map(u => {
-                const statusColor = u.status === 'New' ? '#3B82F6' : u.status === 'Active' ? '#2563EB' : '#6B7280'
-                const statusBg    = u.status === 'New' ? 'rgba(59,130,246,0.12)' : u.status === 'Active' ? 'rgba(37,99,235,0.12)' : 'rgba(107,114,128,0.12)'
-                return (
-                  <div key={u.id} className="grid grid-cols-2 md:grid-cols-[2fr_2fr_1fr_1fr_1fr_1fr_1fr] items-center transition-colors"
-                    style={{ height: 52, borderBottom: '1px solid #1F2937', gap: 12 }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#1F2937'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', margin: 0 }} className="truncate">{u.name || '—'}</p>
-                    <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0 }} className="hidden md:block truncate">{u.email}</p>
-                    <div className="hidden md:block">
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
-                        background: u.plan === 'pro' ? 'rgba(245,158,11,0.12)' : '#1F2937',
-                        color: u.plan === 'pro' ? '#F59E0B' : '#9CA3AF',
-                      }}>{u.plan === 'pro' ? 'Pro' : 'Free'}</span>
-                    </div>
-                    <p className="hidden md:block" style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>
-                      {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
-                    </p>
-                    <p className="hidden md:block" style={{ fontSize: 13, color: '#F9FAFB', margin: 0 }}>{u.total_sessions || 0}</p>
-                    <p className="hidden md:block" style={{ fontSize: 13, fontWeight: 600, color: u.average_score ? scoreColor(parseFloat(u.average_score)) : '#6B7280', margin: 0 }}>
-                      {u.average_score ? parseFloat(u.average_score).toFixed(1) : '—'}
-                    </p>
-                    <div className="hidden md:block">
-                      <span style={{ fontSize: 11, fontWeight: 600, color: statusColor, background: statusBg, padding: '2px 8px', borderRadius: 4 }}>{u.status}</span>
-                    </div>
-                  </div>
-                )
-              })}
-
-              {/* Pagination */}
-              {recentUsers.length > PAGE_SIZE && (
-                <div className="flex items-center justify-between" style={{ marginTop: 16 }}>
-                  <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
-                    style={{ fontSize: 13, color: page === 0 ? '#4B5563' : '#9CA3AF', background: '#1F2937', border: '1px solid #374151', padding: '6px 16px', borderRadius: 8, cursor: page === 0 ? 'not-allowed' : 'pointer' }}>
-                    ← Previous
-                  </button>
-                  <p style={{ fontSize: 12, color: '#6B7280' }}>Page {page + 1}</p>
-                  <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * PAGE_SIZE >= recentUsers.length}
-                    style={{ fontSize: 13, color: (page + 1) * PAGE_SIZE >= recentUsers.length ? '#4B5563' : '#9CA3AF', background: '#1F2937', border: '1px solid #374151', padding: '6px 16px', borderRadius: 8, cursor: 'pointer' }}>
-                    Next →
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Row 5 — System health */}
+        {/* Row 4 — System health */}
         <div style={{ ...CARD, padding: 24 }}>
           <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', marginBottom: 16 }}>System Status</p>
           <div className="flex flex-wrap gap-6">
@@ -356,7 +390,329 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* ═══ USER MANAGEMENT SECTION ═══════════════════════════════════ */}
+        <div style={{ ...CARD, marginTop: 24, overflow: 'hidden' }}>
+
+          {/* Section header */}
+          <div className="flex flex-wrap items-start justify-between gap-3" style={{ padding: '20px 24px 0' }}>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#F8FAFC', margin: '0 0 2px 0' }}>User Management</p>
+              <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>Search, change plans and manage users</p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span style={{ fontSize: 12, color: '#94A3B8', background: '#1E293B', border: '1px solid #334155', borderRadius: 6, padding: '3px 10px' }}>
+                Total: {allUsers.length}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#F59E0B', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '3px 10px' }}>
+                Pro: {allUsers.filter(u => u.plan === 'pro').length}
+              </span>
+              <span style={{ fontSize: 12, color: '#64748B', background: '#1E293B', border: '1px solid #334155', borderRadius: 6, padding: '3px 10px' }}>
+                Free: {allUsers.filter(u => u.plan !== 'pro').length}
+              </span>
+            </div>
+          </div>
+
+          {/* Search + filter row */}
+          <div className="flex flex-wrap gap-3" style={{ padding: '14px 24px' }}>
+            {/* Search input */}
+            <div style={{ flex: 1, minWidth: 200, position: 'relative' }}>
+              <MagnifyingGlass size={15} color="#64748B" style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <input
+                type="text"
+                placeholder="Search by name or email..."
+                value={userSearch}
+                onChange={e => { setUserSearch(e.target.value); setUserPage(0) }}
+                style={{
+                  width: '100%', height: 40, background: '#1E293B', border: '1px solid #334155',
+                  borderRadius: 8, padding: '0 14px 0 34px', color: '#F8FAFC', fontSize: 14,
+                  outline: 'none', boxSizing: 'border-box',
+                }}
+                onFocus={e => e.target.style.borderColor = '#2563EB'}
+                onBlur={e => e.target.style.borderColor = '#334155'}
+              />
+            </div>
+            {/* Filter dropdown */}
+            <select
+              value={userFilter}
+              onChange={e => { setUserFilter(e.target.value); setUserPage(0) }}
+              style={{ width: 140, height: 40, background: '#1E293B', border: '1px solid #334155', borderRadius: 8, color: '#94A3B8', fontSize: 13, padding: '0 10px', outline: 'none' }}
+            >
+              <option value="all">All Users</option>
+              <option value="pro">Pro Users</option>
+              <option value="free">Free Users</option>
+              <option value="active_today">Active Today</option>
+              <option value="active_week">Active This Week</option>
+              <option value="never">Never Active</option>
+            </select>
+            {/* Refresh */}
+            <button
+              onClick={fetchAllUsers}
+              disabled={usersLoading}
+              style={{ width: 40, height: 40, background: '#1E293B', border: '1px solid #334155', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
+              <ArrowCounterClockwise size={16} color="#64748B" className={usersLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          {usersLoading && allUsers.length === 0 ? (
+            <div className="flex justify-center" style={{ padding: 40 }}><Spinner size={20} color="border-blue-500" /></div>
+          ) : filteredUsers.length === 0 ? (
+            /* Empty state */
+            <div className="flex flex-col items-center" style={{ padding: '40px 24px' }}>
+              <MagnifyingGlass size={40} color="#374151" />
+              <p style={{ fontSize: 14, color: '#64748B', margin: '12px 0 6px 0' }}>
+                {userSearch ? `No users matching "${userSearch}"` : 'No users found'}
+              </p>
+              {userSearch && (
+                <button onClick={() => setUserSearch('')} style={{ fontSize: 13, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  Clear search
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* ── DESKTOP TABLE ── */}
+              <div className="hidden md:block" style={{ background: '#111827', borderTop: '1px solid #1E293B' }}>
+                {/* Table header */}
+                <div style={{ display: 'flex', alignItems: 'center', background: '#0F172A', padding: '10px 20px', gap: 8 }}>
+                  {[['USER', 2], ['PLAN', 1], ['SESSIONS', 1], ['AVG SCORE', 1], ['JOINED', 1], ['LAST ACTIVE', 1], ['ACTIONS', 1]].map(([label, flex]) => (
+                    <p key={label} style={{ flex, fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>{label}</p>
+                  ))}
+                </div>
+                {/* Rows */}
+                {pagedUsers.map(u => {
+                  const avg = u.average_score ? parseFloat(u.average_score) : null
+                  const avgColor = avg === null ? '#64748B' : avg > 7 ? '#22C55E' : avg >= 5 ? '#2563EB' : '#EF4444'
+                  const isPro = u.plan === 'pro'
+                  return (
+                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #1E293B', gap: 8, transition: 'background 150ms' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#1E293B'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      {/* USER */}
+                      <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{(u.name || u.email || '?')[0].toUpperCase()}</span>
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC', margin: 0 }} className="truncate">{u.name || '—'}</p>
+                          <p style={{ fontSize: 12, color: '#64748B', margin: 0 }} className="truncate">{u.email}</p>
+                        </div>
+                      </div>
+                      {/* PLAN */}
+                      <div style={{ flex: 1 }}>
+                        <span style={{
+                          fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 6,
+                          background: isPro ? 'rgba(245,158,11,0.12)' : '#1E293B',
+                          border: `1px solid ${isPro ? 'rgba(245,158,11,0.25)' : '#334155'}`,
+                          color: isPro ? '#F59E0B' : '#64748B',
+                        }}>{isPro ? 'Pro' : 'Free'}</span>
+                      </div>
+                      {/* SESSIONS */}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, color: '#F8FAFC', margin: 0 }}>{u.total_sessions || 0}</p>
+                        <p style={{ fontSize: 11, color: '#64748B', margin: 0 }}>sessions</p>
+                      </div>
+                      {/* AVG SCORE */}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: avgColor, margin: 0 }}>
+                          {avg !== null ? avg.toFixed(1) : '—'}
+                        </p>
+                      </div>
+                      {/* JOINED */}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
+                          {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      {/* LAST ACTIVE */}
+                      <div style={{ flex: 1 }}>
+                        {(() => {
+                          const la = getLastActive(u.last_active_at, u.last_login_at)
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span style={{
+                                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                                background: la.color,
+                                boxShadow: la.pulse ? `0 0 0 0 ${la.color}` : 'none',
+                                animation: la.pulse ? 'pulse 1.5s infinite' : 'none',
+                              }} />
+                              <span style={{ fontSize: 12, color: la.color }}>{la.label}</span>
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      {/* ACTIONS */}
+                      <div style={{ flex: 1 }}>
+                        {isPro ? (
+                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'free' })} style={{
+                            fontSize: 12, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
+                            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444',
+                          }}>Downgrade to Free</button>
+                        ) : (
+                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'pro' })} style={{
+                            fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
+                            background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#F59E0B',
+                          }}>Upgrade to Pro</button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* ── MOBILE CARDS ── */}
+              <div className="md:hidden" style={{ padding: '0 12px 12px', borderTop: '1px solid #1E293B' }}>
+                {pagedUsers.map(u => {
+                  const avg = u.average_score ? parseFloat(u.average_score) : null
+                  const avgColor = avg === null ? '#64748B' : avg > 7 ? '#22C55E' : avg >= 5 ? '#2563EB' : '#EF4444'
+                  const isPro = u.plan === 'pro'
+                  return (
+                    <div key={u.id} style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 10, padding: '14px 16px', marginTop: 8 }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
+                          <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{(u.name || u.email || '?')[0].toUpperCase()}</span>
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', margin: 0 }} className="truncate">{u.name || '—'}</p>
+                            <p style={{ fontSize: 11, color: '#64748B', margin: 0 }} className="truncate">{u.email}</p>
+                          </div>
+                        </div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 5, flexShrink: 0,
+                          background: isPro ? 'rgba(245,158,11,0.12)' : '#1E293B',
+                          border: `1px solid ${isPro ? 'rgba(245,158,11,0.25)' : '#334155'}`,
+                          color: isPro ? '#F59E0B' : '#64748B',
+                        }}>{isPro ? 'Pro' : 'Free'}</span>
+                      </div>
+                      <div className="flex items-center justify-between" style={{ marginTop: 10 }}>
+                        <div>
+                          <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 2px 0' }}>
+                            Sessions: {u.total_sessions || 0} · Avg: <span style={{ color: avgColor }}>{avg !== null ? avg.toFixed(1) : '—'}</span>
+                          </p>
+                          <p style={{ fontSize: 11, color: '#64748B', margin: 0 }}>
+                            Last active: {getLastActive(u.last_active_at, u.last_login_at).label}
+                          </p>
+                        </div>
+                        {isPro ? (
+                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'free' })} style={{
+                            fontSize: 11, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444',
+                          }}>Downgrade</button>
+                        ) : (
+                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'pro' })} style={{
+                            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                            background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#F59E0B',
+                          }}>Upgrade</button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* ── PAGINATION ── */}
+              <div className="flex flex-wrap items-center justify-between gap-3" style={{ padding: '14px 20px', borderTop: '1px solid #1E293B' }}>
+                <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
+                  Showing {userPage * userPageSize + 1}–{Math.min((userPage + 1) * userPageSize, filteredUsers.length)} of {filteredUsers.length} users
+                </p>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setUserPage(p => Math.max(0, p - 1))} disabled={userPage === 0}
+                    style={{ height: 32, padding: '0 10px', background: '#1E293B', border: '1px solid #334155', borderRadius: 6, cursor: userPage === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', opacity: userPage === 0 ? 0.4 : 1 }}>
+                    <CaretLeft size={14} color="#94A3B8" />
+                  </button>
+                  {Array.from({ length: Math.min(5, totalUserPages) }, (_, i) => {
+                    const start = Math.max(0, Math.min(userPage - 2, totalUserPages - 5))
+                    const pg = start + i
+                    if (pg >= totalUserPages) return null
+                    return (
+                      <button key={pg} onClick={() => setUserPage(pg)}
+                        style={{ height: 32, minWidth: 32, padding: '0 8px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: pg === userPage ? 600 : 400, background: pg === userPage ? '#2563EB' : 'transparent', color: pg === userPage ? '#fff' : '#64748B' }}>
+                        {pg + 1}
+                      </button>
+                    )
+                  })}
+                  <button onClick={() => setUserPage(p => Math.min(totalUserPages - 1, p + 1))} disabled={userPage >= totalUserPages - 1}
+                    style={{ height: 32, padding: '0 10px', background: '#1E293B', border: '1px solid #334155', borderRadius: 6, cursor: userPage >= totalUserPages - 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', opacity: userPage >= totalUserPages - 1 ? 0.4 : 1 }}>
+                    <CaretRight size={14} color="#94A3B8" />
+                  </button>
+                </div>
+                <select value={userPageSize} onChange={e => { setUserPageSize(Number(e.target.value)); setUserPage(0) }}
+                  style={{ height: 32, background: '#1E293B', border: '1px solid #334155', borderRadius: 6, color: '#94A3B8', fontSize: 12, padding: '0 8px', outline: 'none' }}>
+                  <option value={10}>10 / page</option>
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+        {/* ═══ END USER MANAGEMENT ════════════════════════════════════════════ */}
+
       </div>
+
+      {/* ── CONFIRMATION MODAL ── */}
+      {confirmModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24, width: '100%', maxWidth: 380 }}>
+            <div className="flex justify-end">
+              <button onClick={() => setConfirmModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={18} color="#64748B" />
+              </button>
+            </div>
+            <div className="flex flex-col items-center" style={{ textAlign: 'center', marginTop: 4 }}>
+              {confirmModal.newPlan === 'pro' ? (
+                <Crown size={36} color="#F59E0B" style={{ marginBottom: 12 }} />
+              ) : (
+                <ArrowDown size={36} color="#EF4444" style={{ marginBottom: 12 }} />
+              )}
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#F8FAFC', margin: '0 0 10px 0' }}>
+                {confirmModal.newPlan === 'pro'
+                  ? `Upgrade ${confirmModal.user.name || confirmModal.user.email} to Pro?`
+                  : `Downgrade ${confirmModal.user.name || confirmModal.user.email} to Free?`}
+              </p>
+              <p style={{ fontSize: 13, color: '#94A3B8', margin: '0 0 20px 0', lineHeight: 1.6 }}>
+                {confirmModal.newPlan === 'pro'
+                  ? 'This user will get unlimited sessions and all Pro features immediately.'
+                  : 'This user will lose Pro features and return to free limits.'}
+              </p>
+              <button onClick={handlePlanChange} disabled={confirmLoading} style={{
+                width: '100%', height: 44, borderRadius: 10, border: 'none', cursor: confirmLoading ? 'not-allowed' : 'pointer',
+                fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                background: confirmModal.newPlan === 'pro' ? '#F59E0B' : '#EF4444',
+                color: confirmModal.newPlan === 'pro' ? '#000' : '#fff',
+              }}>
+                {confirmLoading ? <Spinner size={16} color={confirmModal.newPlan === 'pro' ? 'border-black' : 'border-white'} /> : (confirmModal.newPlan === 'pro' ? 'Upgrade to Pro' : 'Downgrade to Free')}
+              </button>
+              <button onClick={() => setConfirmModal(null)} style={{ width: '100%', height: 40, marginTop: 8, background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 14, color: '#64748B' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TOAST ── */}
+      {toast && (() => {
+        const styles = {
+          success: { bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.35)',  color: '#22C55E' },
+          info:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', color: '#94A3B8' },
+          error:   { bg: 'rgba(239,68,68,0.10)',   border: 'rgba(239,68,68,0.3)',   color: '#EF4444' },
+        }
+        const t = styles[toast.type] || styles.success
+        return (
+          <div style={{
+            position: 'fixed', top: 20, right: 20, zIndex: 1100,
+            background: t.bg, border: `1px solid ${t.border}`,
+            borderRadius: 10, padding: '12px 18px', color: t.color,
+            fontSize: 13, fontWeight: 600, maxWidth: 340,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+          }}>
+            {toast.msg}
+          </div>
+        )
+      })()}
+
     </AppLayout>
   )
 }

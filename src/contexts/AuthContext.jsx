@@ -88,6 +88,8 @@ export function AuthProvider({ children }) {
         .eq('id', userId)
         .single()
       if (mounted.current) setUserProfile(data ?? null)
+      // Update last_active_at on every session restore (fire-and-forget)
+      supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', userId).then(() => {})
     } catch {
       // users table may not exist yet (migrations pending) — not fatal
       if (mounted.current) setUserProfile(null)
@@ -123,6 +125,7 @@ export function AuthProvider({ children }) {
           active_session_token: sessionToken,
           last_login_at:        new Date().toISOString(),
           last_login_device:    deviceInfo,
+          last_active_at:       new Date().toISOString(),
         }).eq('id', data.user.id)
         localStorage.setItem('interviewiq-session-token', sessionToken)
       } catch {
