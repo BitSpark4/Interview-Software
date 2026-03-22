@@ -4,6 +4,7 @@ import {
   ShieldStar, Users, Crown, UserCircle, Target, ChartLineUp,
   ChartBar, ArrowCounterClockwise, CheckCircle,
   MagnifyingGlass, ArrowDown, CaretLeft, CaretRight, X,
+  Eye, Trophy, Lightning, Heart, BookOpen, EnvelopeSimple,
 } from '@phosphor-icons/react'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -13,6 +14,11 @@ import {
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
 import { supabase } from '../lib/supabase'
+
+const SECTOR_LABELS = {
+  it_tech: 'IT & Technology', government: 'Government', banking: 'Banking',
+  engineering: 'Engineering', medical: 'Medical', students: 'Students', business: 'Business',
+}
 
 function scoreColor(v) {
   if (v >= 7) return '#22C55E'
@@ -82,6 +88,13 @@ export default function Admin() {
   const [confirmModal, setConfirmModal] = useState(null)   // { user, newPlan }
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [toast, setToast]               = useState(null)   // { msg }
+  // ── User detail panel state ─────────────────────────────────────────────────
+  const [selectedUser, setSelectedUser]           = useState(null)
+  const [userDetail, setUserDetail]               = useState(null)
+  const [userDetailLoading, setUserDetailLoading] = useState(false)
+  const [emailSubject, setEmailSubject]           = useState('')
+  const [emailBody, setEmailBody]                 = useState('')
+  const [emailSending, setEmailSending]           = useState(false)
 
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
@@ -197,6 +210,95 @@ export default function Admin() {
       setConfirmLoading(false)
     }
   }
+
+  const fetchUserDetail = useCallback(async (userId) => {
+    setUserDetailLoading(true)
+    setUserDetail(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const fnUrl = isLocalDev
+        ? `http://localhost:8888/.netlify/functions/admin-user-detail?userId=${userId}`
+        : `/.netlify/functions/admin-user-detail?userId=${userId}`
+      const res = await fetch(fnUrl, { headers: { Authorization: `Bearer ${token}` } })
+      const json = await res.json()
+      setUserDetail(json)
+    } catch (err) {
+      console.error('Failed to fetch user detail:', err)
+    } finally {
+      setUserDetailLoading(false)
+    }
+  }, [isLocalDev])
+
+  const openUserDetail = useCallback((user) => {
+    setSelectedUser(user)
+    setEmailSubject('')
+    setEmailBody('')
+    fetchUserDetail(user.id)
+  }, [fetchUserDetail])
+
+  const closeUserDetail = useCallback(() => {
+    setSelectedUser(null)
+    setUserDetail(null)
+    setEmailSubject('')
+    setEmailBody('')
+  }, [])
+
+  const getEmailTemplate = useCallback((type) => {
+    if (!selectedUser) return
+    const name = selectedUser.name || selectedUser.email?.split('@')[0] || 'there'
+    const sessions = userDetail?.sessions || []
+    const weakAreas = userDetail?.weakAreas || []
+    const avgScore = sessions.length
+      ? (sessions.reduce((sum, r) => sum + (r.total_score || 0), 0) / sessions.length).toFixed(1)
+      : '—'
+    const rawSector = sessions[sessions.length - 1]?.sector || ''
+    const sector = SECTOR_LABELS[rawSector] || rawSector || 'your chosen field'
+    const weakTopic = weakAreas[0]?.area || 'communication'
+    const strongAreas = weakAreas.filter(a => a.avg_score >= 7).map(a => a.area).join(', ') || 'consistency'
+
+    if (type === 'encourage') {
+      setEmailSubject(`Keep going ${name} — you are improving!`)
+      setEmailBody(`Hi ${name},\n\nI noticed you completed ${sessions.length} sessions on InterviewIQ. Your dedication to ${sector} preparation is impressive!\n\nYour average score is ${avgScore} out of 10. You are making real progress.\n\nYour weak area is ${weakTopic}. Focus on this and you will see major improvement.\n\nKeep practicing. You are almost ready!\n\nBest wishes,\nInterviewIQ Team`)
+    } else if (type === 'study') {
+      setEmailSubject(`Study tips for your ${sector} preparation`)
+      setEmailBody(`Hi ${name},\n\nBased on your InterviewIQ sessions here are personalized tips for you:\n\nYour strong areas: ${strongAreas}\nFocus areas: ${weakTopic}\n\nRecommended study plan:\n- Practice 1 session daily\n- Focus on ${weakTopic} this week\n- Read The Hindu for current affairs\n\nLogin to InterviewIQ to continue:\nhttps://getinterviewiq.in\n\nBest wishes,\nInterviewIQ Team`)
+    } else if (type === 'upgrade') {
+      setEmailSubject('Special offer for you — Pro plan')
+      setEmailBody(`Hi ${name},\n\nYou have been practicing on InterviewIQ and your progress is great!\n\nUpgrade to Pro to unlock:\n- Unlimited practice sessions\n- Correct answers after each question\n- AI career coaching\n- Choose 5 to 30 questions\n\nSpecial offer: ₹199/month\nLess than one coaching book.\n\nUpgrade now: https://getinterviewiq.in/upgrade\n\nBest wishes,\nInterviewIQ Team`)
+    }
+  }, [selectedUser, userDetail])
+
+  const sendEmail = useCallback(async () => {
+    if (!selectedUser || !emailSubject || !emailBody) return
+    setEmailSending(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      const fnUrl = isLocalDev
+        ? 'http://localhost:8888/.netlify/functions/send-admin-email'
+        : '/.netlify/functions/send-admin-email'
+      const res = await fetch(fnUrl, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: selectedUser.email, subject: emailSubject, body: emailBody, targetUserId: selectedUser.id }),
+      })
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || `Server error ${res.status}`)
+      }
+      setEmailSubject('')
+      setEmailBody('')
+      setToast({ type: 'success', msg: `Email sent to ${selectedUser.name || selectedUser.email} successfully` })
+      setTimeout(() => setToast(null), 4000)
+      fetchUserDetail(selectedUser.id)
+    } catch (err) {
+      setToast({ type: 'error', msg: `Failed to send email: ${err.message}` })
+      setTimeout(() => setToast(null), 4000)
+    } finally {
+      setEmailSending(false)
+    }
+  }, [selectedUser, emailSubject, emailBody, isLocalDev, fetchUserDetail])
 
   const s = data?.stats
   const growthChart = data?.growth_chart || []
@@ -506,7 +608,7 @@ export default function Admin() {
                   const avgColor = avg === null ? '#64748B' : avg > 7 ? '#22C55E' : avg >= 5 ? '#2563EB' : '#EF4444'
                   const isPro = u.plan === 'pro'
                   return (
-                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #1E293B', gap: 8, transition: 'background 150ms' }}
+                    <div key={u.id} onClick={() => openUserDetail(u)} style={{ display: 'flex', alignItems: 'center', padding: '12px 20px', borderBottom: '1px solid #1E293B', gap: 8, transition: 'background 150ms', cursor: 'pointer' }}
                       onMouseEnter={e => e.currentTarget.style.background = '#1E293B'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       {/* USER */}
@@ -563,17 +665,26 @@ export default function Admin() {
                         })()}
                       </div>
                       {/* ACTIONS */}
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: 1 }} className="flex items-center gap-2">
+                        <button
+                          onClick={e => { e.stopPropagation(); openUserDetail(u) }}
+                          title="View user details"
+                          style={{ width: 32, height: 32, background: '#1E293B', border: '1px solid #334155', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#334155'; e.currentTarget.querySelector('svg').style.color = '#F8FAFC' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#1E293B'; e.currentTarget.querySelector('svg').style.color = '#64748B' }}
+                        >
+                          <Eye size={15} color="#64748B" />
+                        </button>
                         {isPro ? (
-                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'free' })} style={{
+                          <button onClick={e => { e.stopPropagation(); setConfirmModal({ user: u, newPlan: 'free' }) }} style={{
                             fontSize: 12, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
                             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444',
-                          }}>Downgrade to Free</button>
+                          }}>Downgrade</button>
                         ) : (
-                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'pro' })} style={{
+                          <button onClick={e => { e.stopPropagation(); setConfirmModal({ user: u, newPlan: 'pro' }) }} style={{
                             fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 6, cursor: 'pointer',
                             background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#F59E0B',
-                          }}>Upgrade to Pro</button>
+                          }}>Upgrade</button>
                         )}
                       </div>
                     </div>
@@ -588,7 +699,7 @@ export default function Admin() {
                   const avgColor = avg === null ? '#64748B' : avg > 7 ? '#22C55E' : avg >= 5 ? '#2563EB' : '#EF4444'
                   const isPro = u.plan === 'pro'
                   return (
-                    <div key={u.id} style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 10, padding: '14px 16px', marginTop: 8 }}>
+                    <div key={u.id} onClick={() => openUserDetail(u)} style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 10, padding: '14px 16px', marginTop: 8, cursor: 'pointer' }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2" style={{ minWidth: 0 }}>
                           <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -616,12 +727,12 @@ export default function Admin() {
                           </p>
                         </div>
                         {isPro ? (
-                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'free' })} style={{
+                          <button onClick={e => { e.stopPropagation(); setConfirmModal({ user: u, newPlan: 'free' }) }} style={{
                             fontSize: 11, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
                             background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444',
                           }}>Downgrade</button>
                         ) : (
-                          <button onClick={() => setConfirmModal({ user: u, newPlan: 'pro' })} style={{
+                          <button onClick={e => { e.stopPropagation(); setConfirmModal({ user: u, newPlan: 'pro' }) }} style={{
                             fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
                             background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: '#F59E0B',
                           }}>Upgrade</button>
@@ -711,6 +822,252 @@ export default function Admin() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── USER DETAIL SLIDE PANEL ── */}
+      {selectedUser && (
+        <>
+          {/* Overlay */}
+          <div onClick={closeUserDetail} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1200, transition: 'opacity 300ms' }} />
+          {/* Panel */}
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0,
+            width: 'min(520px, 100vw)',
+            background: '#0F172A',
+            zIndex: 1300,
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            transform: 'translateX(0)',
+            transition: 'transform 300ms ease',
+            boxShadow: '-8px 0 40px rgba(0,0,0,0.5)',
+          }}>
+            {/* HEADER */}
+            <div style={{ background: '#0F172A', borderBottom: '1px solid #1E293B', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
+              <div className="flex items-center gap-3" style={{ minWidth: 0 }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>{(selectedUser.name || selectedUser.email || '?')[0].toUpperCase()}</span>
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: '#F8FAFC', margin: '0 0 2px 0' }} className="truncate">{selectedUser.name || '—'}</p>
+                  <p style={{ fontSize: 13, color: '#64748B', margin: 0 }} className="truncate">{selectedUser.email}</p>
+                </div>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, flexShrink: 0, marginLeft: 4,
+                  background: selectedUser.plan === 'pro' ? 'rgba(245,158,11,0.12)' : '#1E293B',
+                  border: `1px solid ${selectedUser.plan === 'pro' ? 'rgba(245,158,11,0.3)' : '#334155'}`,
+                  color: selectedUser.plan === 'pro' ? '#F59E0B' : '#64748B',
+                }}>{selectedUser.plan === 'pro' ? 'Pro' : 'Free'}</span>
+              </div>
+              <button onClick={closeUserDetail} style={{ width: 32, height: 32, background: '#1E293B', border: 'none', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <X size={16} color="#94A3B8" />
+              </button>
+            </div>
+
+            <div style={{ padding: '20px 24px', flex: 1 }}>
+              {userDetailLoading ? (
+                <div className="flex justify-center" style={{ padding: 40 }}><Spinner size={24} color="border-blue-500" /></div>
+              ) : (
+                <>
+                  {/* QUICK STATS 2x2 */}
+                  {(() => {
+                    const sessions = userDetail?.sessions || []
+                    const avg = sessions.length ? sessions.reduce((s, r) => s + (r.total_score || 0), 0) / sessions.length : null
+                    const best = sessions.length ? Math.max(...sessions.map(r => r.total_score || 0)) : null
+                    // streak calc
+                    const days = [...new Set(sessions.map(s => new Date(s.created_at).toDateString()))]
+                      .map(d => new Date(d).getTime()).sort((a, b) => b - a)
+                    let streak = days.length > 0 ? 1 : 0
+                    for (let i = 1; i < days.length; i++) {
+                      if (days[i - 1] - days[i] === 86400000) streak++
+                      else break
+                    }
+                    return (
+                      <div className="grid grid-cols-2 gap-3" style={{ marginBottom: 16 }}>
+                        {[
+                          { icon: Target, iconColor: '#2563EB', label: 'Total Sessions', value: sessions.length },
+                          { icon: ChartBar, iconColor: '#8B5CF6', label: 'Average Score', value: avg !== null ? avg.toFixed(1) : '—', valueColor: avg !== null ? scoreColor(avg) : '#64748B' },
+                          { icon: Trophy, iconColor: '#F59E0B', label: 'Best Score', value: best !== null ? best.toFixed(1) : '—', valueColor: '#22C55E' },
+                          { icon: Lightning, iconColor: '#F97316', label: 'Day Streak', value: streak, valueColor: '#F97316' },
+                        ].map(card => (
+                          <div key={card.label} style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 10, padding: '12px 16px' }}>
+                            <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+                              <span style={{ fontSize: 11, color: '#64748B' }}>{card.label}</span>
+                              <card.icon size={16} color={card.iconColor} />
+                            </div>
+                            <p style={{ fontSize: 24, fontWeight: 700, color: card.valueColor || '#F8FAFC', margin: 0 }}>{card.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+
+                  {/* CAREER GOAL */}
+                  {(() => {
+                    const sessions = userDetail?.sessions || []
+                    const sector = sessions[sessions.length - 1]?.sector
+                    if (!sector) return null
+                    return (
+                      <div style={{ background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                        <p style={{ fontSize: 11, color: '#64748B', margin: '0 0 4px 0' }}>Career Goal</p>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC', margin: 0 }}>{sector}</p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* SCORE JOURNEY CHART */}
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', margin: '0 0 10px 0' }}>Score Journey</p>
+                    {userDetail?.sessions?.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={120}>
+                        <LineChart data={userDetail.sessions.map((s, i) => ({ i: i + 1, score: s.total_score || 0 }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                          <XAxis dataKey="i" tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} />
+                          <YAxis domain={[0, 10]} tick={{ fill: '#64748B', fontSize: 10 }} axisLine={false} tickLine={false} width={20} />
+                          <Tooltip contentStyle={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 8, fontSize: 11 }}
+                            itemStyle={{ color: '#2563EB' }} />
+                          <Line type="monotone" dataKey="score" stroke="#2563EB" strokeWidth={2} dot={{ fill: '#2563EB', r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <p style={{ fontSize: 13, color: '#475569', textAlign: 'center', padding: '20px 0' }}>No interviews yet</p>
+                    )}
+                  </div>
+
+                  {/* SESSIONS LIST */}
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', margin: '0 0 10px 0' }}>All Sessions</p>
+                    {userDetail?.sessions?.length > 0 ? (
+                      <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                        {userDetail.sessions.slice(-10).reverse().map(sess => (
+                          <div key={sess.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, marginBottom: 4, background: '#111827', border: '1px solid #1E293B' }}>
+                            <span style={{ fontSize: 12, color: '#64748B' }}>{new Date(sess.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 5, background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.2)', color: '#60A5FA' }}>{sess.sector || sess.interview_type || '—'}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: scoreColor(sess.total_score || 0) }}>{(sess.total_score || 0).toFixed(1)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 13, color: '#475569', textAlign: 'center', padding: '12px 0' }}>No sessions yet</p>
+                    )}
+                  </div>
+
+                  {/* WEAK AREAS */}
+                  <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', margin: '0 0 10px 0' }}>Weak Areas Identified</p>
+                    {userDetail?.weakAreas?.length > 0 ? (
+                      userDetail.weakAreas.map(area => (
+                        <div key={area.area} style={{ marginBottom: 8 }}>
+                          <div className="flex justify-between" style={{ marginBottom: 4 }}>
+                            <span style={{ fontSize: 12, color: '#94A3B8' }}>{area.area}</span>
+                            <span style={{ fontSize: 12, color: area.avg_score < 5 ? '#EF4444' : '#F59E0B' }}>{parseFloat(area.avg_score).toFixed(1)}/10</span>
+                          </div>
+                          <div style={{ height: 4, borderRadius: 2, background: '#1E293B' }}>
+                            <div style={{ height: '100%', borderRadius: 2, width: `${(area.avg_score / 10) * 100}%`, background: area.avg_score < 5 ? '#EF4444' : '#F59E0B' }} />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ fontSize: 13, color: '#22C55E', padding: '8px 0' }}>Performing well overall</p>
+                    )}
+                  </div>
+
+                  {/* LAST ACTIVE */}
+                  {(() => {
+                    const la = getLastActive(selectedUser.last_active_at, selectedUser.last_login_at)
+                    const ts = selectedUser.last_active_at || selectedUser.last_login_at
+                    return ts ? (
+                      <div style={{ marginBottom: 16 }}>
+                        <p style={{ fontSize: 12, color: '#64748B', margin: 0 }}>
+                          Last active: <span style={{ color: la.color }}>{new Date(ts).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                        </p>
+                      </div>
+                    ) : null
+                  })()}
+
+                  {/* SEND FEEDBACK EMAIL */}
+                  <div style={{ borderTop: '1px solid #1E293B', paddingTop: 20, marginBottom: 16 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', margin: '0 0 2px 0' }}>Send Feedback Email</p>
+                    <p style={{ fontSize: 12, color: '#64748B', margin: '0 0 14px 0' }}>Send personalized coaching email</p>
+
+                    {/* Template buttons */}
+                    <div className="flex gap-2 flex-wrap" style={{ marginBottom: 14 }}>
+                      <button onClick={() => getEmailTemplate('encourage')} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                        background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', color: '#22C55E',
+                      }}>
+                        <Heart size={13} /> Encourage
+                      </button>
+                      <button onClick={() => getEmailTemplate('study')} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                        background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)', color: '#2563EB',
+                      }}>
+                        <BookOpen size={13} /> Study Tips
+                      </button>
+                      <button onClick={() => getEmailTemplate('upgrade')} style={{
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                        background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#F59E0B',
+                      }}>
+                        <Crown size={13} /> Upgrade Offer
+                      </button>
+                    </div>
+
+                    {/* Subject */}
+                    <input
+                      type="text"
+                      placeholder="Subject line..."
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      style={{ width: '100%', height: 40, background: '#1E293B', border: '1px solid #334155', borderRadius: 8, padding: '0 14px', color: '#F8FAFC', fontSize: 13, outline: 'none', boxSizing: 'border-box', marginBottom: 10 }}
+                    />
+                    {/* Body */}
+                    <textarea
+                      placeholder="Email body..."
+                      value={emailBody}
+                      onChange={e => setEmailBody(e.target.value)}
+                      rows={8}
+                      style={{ width: '100%', minHeight: 200, background: '#1E293B', border: '1px solid #334155', borderRadius: 8, padding: '10px 14px', color: '#F8FAFC', fontSize: 13, lineHeight: 1.6, outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: 12, fontFamily: 'inherit' }}
+                    />
+                    {/* Send button */}
+                    <button
+                      onClick={sendEmail}
+                      disabled={emailSending || !emailSubject || !emailBody}
+                      style={{
+                        width: '100%', height: 44, borderRadius: 10, border: 'none', cursor: emailSending || !emailSubject || !emailBody ? 'not-allowed' : 'pointer',
+                        background: '#2563EB', color: '#fff', fontSize: 14, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        opacity: emailSending || !emailSubject || !emailBody ? 0.6 : 1,
+                      }}
+                    >
+                      {emailSending ? (
+                        <><Spinner size={16} color="border-white" /> Sending...</>
+                      ) : (
+                        <><EnvelopeSimple size={16} /> Send Email to {selectedUser.name || selectedUser.email?.split('@')[0]}</>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* EMAIL HISTORY */}
+                  <div style={{ borderTop: '1px solid #1E293B', paddingTop: 20 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', margin: '0 0 12px 0' }}>Email History</p>
+                    {userDetail?.emailHistory?.length > 0 ? (
+                      userDetail.emailHistory.map((item, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: '1px solid #1E293B' }}>
+                          <span style={{ fontSize: 11, color: '#475569', flexShrink: 0 }}>
+                            {new Date(item.created_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <span style={{ fontSize: 12, color: '#94A3B8', textAlign: 'right' }}>{item.details}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ fontSize: 13, color: '#475569', textAlign: 'center', padding: '12px 0' }}>No emails sent yet</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {/* ── TOAST ── */}
