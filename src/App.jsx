@@ -23,6 +23,11 @@ const Upgrade       = lazy(() => import('./pages/Upgrade'))
 const Profile       = lazy(() => import('./pages/Profile'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Admin         = lazy(() => import('./pages/Admin'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const TermsOfService= lazy(() => import('./pages/TermsOfService'))
+const RefundPolicy  = lazy(() => import('./pages/RefundPolicy'))
+const ContactUs     = lazy(() => import('./pages/ContactUs'))
+const Settings      = lazy(() => import('./pages/Settings'))
 
 // Resets ErrorBoundary on every route change so a crash on one page
 // doesn't permanently block navigation to other pages.
@@ -101,6 +106,12 @@ export default function App() {
                   <Route path="/profile"           element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
                   <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms"   element={<TermsOfService />} />
+                  <Route path="/refund"  element={<RefundPolicy />} />
+                  <Route path="/contact" element={<ContactUs />} />
 
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

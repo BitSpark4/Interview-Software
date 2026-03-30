@@ -562,15 +562,16 @@ export default function Landing() {
             <p style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>Built for India 🇮🇳</p>
           </div>
           <div className="flex items-center gap-6">
-            <a href="#" className="transition-colors" style={{ fontSize: 13, color: '#64748B' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
-              onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>Privacy Policy</a>
-            <a href="#" className="transition-colors" style={{ fontSize: 13, color: '#64748B' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
-              onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>Terms of Service</a>
-            <a href="mailto:hello@interviewiq.in" className="transition-colors" style={{ fontSize: 13, color: '#64748B' }}
-              onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
-              onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>Contact Us</a>
+            {[
+              { to: '/privacy', label: 'Privacy Policy' },
+              { to: '/terms',   label: 'Terms of Service' },
+              { to: '/refund',  label: 'Refund Policy' },
+              { to: '/contact', label: 'Contact Us' },
+            ].map(({ to, label }) => (
+              <Link key={to} to={to} className="transition-colors" style={{ fontSize: 13, color: '#64748B', textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#94A3B8'}
+                onMouseLeave={e => e.currentTarget.style.color = '#64748B'}>{label}</Link>
+            ))}
           </div>
           <p style={{ fontSize: 12, color: '#4B5563' }}>© 2026 InterviewIQ</p>
         </div>

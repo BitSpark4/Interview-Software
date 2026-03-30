@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   SquaresFour, PlayCircle, ChartBar,
   UserCircle, SignOut, X, ShieldStar,
-  CaretLeft, CaretRight,
+  CaretLeft, CaretRight, Question, Gear,
 } from '@phosphor-icons/react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -15,6 +15,11 @@ const MAIN_NAV = [
 
 const ACCOUNT_NAV = [
   { to: '/profile', icon: UserCircle, label: 'Profile', match: p => p === '/profile' },
+]
+
+const SUPPORT_NAV = [
+  { to: '/contact',  icon: Question, label: 'Help & Support', match: p => p === '/contact' },
+  { to: '/settings', icon: Gear,     label: 'Settings',       match: p => p === '/settings' },
 ]
 
 function NavItem({ to, icon: Icon, label, onClick, isActive, adminStyle, collapsed }) {
@@ -162,6 +167,19 @@ export default function Sidebar({ mobileOpen, onClose }) {
           {ACCOUNT_NAV.map((item, i) => (
             <NavItem
               key={`acc-${i}`}
+              {...item}
+              onClick={isMobile ? onClose : undefined}
+              isActive={item.match(pathname)}
+              collapsed={collapsed && !isMobile}
+            />
+          ))}
+        </div>
+
+        <SectionLabel label="SUPPORT" collapsed={collapsed && !isMobile} />
+        <div className="space-y-0.5">
+          {SUPPORT_NAV.map((item, i) => (
+            <NavItem
+              key={`sup-${i}`}
               {...item}
               onClick={isMobile ? onClose : undefined}
               isActive={item.match(pathname)}
