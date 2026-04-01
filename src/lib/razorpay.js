@@ -60,8 +60,8 @@ export async function runPayment({ userId, userEmail }) {
 
   // ── Direct mode fallback (npm run dev with VITE_ keys) ───────────────────
   if (!useServer) {
-    keyId = import.meta.env.VITE_RAZORPAY_TEST_API_KEY
-    if (!keyId) throw new Error('VITE_RAZORPAY_TEST_API_KEY missing from .env.local')
+    keyId = import.meta.env.VITE_RAZORPAY_KEY_ID
+    if (!keyId) throw new Error('VITE_RAZORPAY_KEY_ID missing from .env.local')
   }
 
   // ── Open Razorpay checkout ───────────────────────────────────────────────

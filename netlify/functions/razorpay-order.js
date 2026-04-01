@@ -26,9 +26,8 @@ export const handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
   }
 
-  // Support both prod env vars and local VITE_ dev vars
-  const KEY_ID     = process.env.RAZORPAY_KEY_ID     || process.env.VITE_RAZORPAY_TEST_API_KEY
-  const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || process.env.VITE_RAZORPAY_TEST_SECRET_KEY
+  const KEY_ID     = process.env.RAZORPAY_KEY_ID
+  const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET
 
   if (!KEY_ID || !KEY_SECRET) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'Razorpay keys not configured' }) }

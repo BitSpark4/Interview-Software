@@ -26,7 +26,7 @@ export const handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
   }
 
-  const KEY_SECRET      = process.env.RAZORPAY_KEY_SECRET    || process.env.VITE_RAZORPAY_TEST_SECRET_KEY
+  const KEY_SECRET      = process.env.RAZORPAY_KEY_SECRET
   const SUPABASE_URL    = process.env.SUPABASE_URL            || process.env.VITE_SUPABASE_URL
   const SUPABASE_KEY    = process.env.SUPABASE_SERVICE_KEY
 
