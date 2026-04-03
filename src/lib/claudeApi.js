@@ -49,7 +49,9 @@ CRITICAL RULES — FOLLOW EXACTLY:
 3. Plain text only — no markdown no asterisks no hashtags
 4. One question at a time — never ask two together
 5. Be direct — no long introductions before question
-6. NEVER start a question with a number prefix like "Question 1 of 10" or "Q1:" or "1." — just ask the question directly
+6. CRITICAL: Never start any question with "Question X of Y:" or "Q1:" or any numbering prefix whatsoever. Just ask the question directly. The UI already shows question numbers.
+   Example of WRONG format: "Question 3 of 10: Tell me about..."
+   Example of CORRECT format: "Tell me about..."
 
 NEVER REPEAT THESE QUESTIONS:
 ${previousQuestions.length > 0 ? previousQuestions.slice(0, 30).join('\n') : 'No previous questions yet'}
@@ -261,12 +263,12 @@ async function fetchSyllabusContext(sector) {
   }
 }
 
-async function callClaude({ system, messages, maxTokens = 1024, model = SONNET }) {
+async function callClaude({ system, messages, maxTokens = 1024, model = SONNET, timeoutMs = 30000 }) {
   const res = await fetchWithTimeout(PROXY_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
-  })
+  }, timeoutMs)
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
@@ -308,34 +310,28 @@ export async function startInterview({ role, interviewType, companyFocus, resume
 // ── evaluateAnswer ────────────────────────────────────────────────────────────
 export async function evaluateAnswer({
   conversationHistory, userAnswer, questionNumber,
-  interviewType, role, companyFocus, resumeText,
-  sector, state, studentProfile, totalQuestions = 10,
+  totalQuestions = 10, questionText = '',
 }) {
-  const activeSector = sector || 'it_tech'
-  const activeState  = state || 'maharashtra'
-  const profile      = { resumeText, ...studentProfile }
-
-  const basePrompt = buildSectorPrompt(activeSector, role, interviewType, companyFocus, activeState, profile, totalQuestions)
-
-  const isStudents = activeSector === 'students'
-  const jsonShape  = isStudents
-    ? `{"score":7,"good":"...","missing":"...","ideal":"...","correct_answer":"complete authoritative answer in 3-5 sentences","topic":"exact topic name","improvement_tip":"one specific actionable tip","encouragement":"...","next_question":"..."}`
-    : `{"score":7,"good":"...","missing":"...","ideal":"...","correct_answer":"complete authoritative answer in 3-5 sentences","topic":"exact topic name","improvement_tip":"one specific actionable tip","star_breakdown":{"situation":"present","task":"present","action":"present","result":"missing"},"next_question":""}`
-
-  const system = `${basePrompt}
-
-Evaluate the answer. Respond ONLY with this JSON (no other text):
-${jsonShape}
-For non-behavioral questions set star_breakdown values to "N/A".
-correct_answer must be complete accurate and based on official sources suitable for exam standard.
-topic must be the exact syllabus topic name like "Medieval History" or "RBI Monetary Policy".
-improvement_tip must be one specific actionable tip to improve next time.
-Question ${questionNumber} of ${totalQuestions}.${questionNumber === totalQuestions ? ' LAST question — set next_question to "".' : ''}`
+  const system = `You are an interview evaluator.
+Evaluate the answer and respond ONLY with this exact JSON — no other text:
+{
+  "score": 7,
+  "good": "one sentence what was good",
+  "missing": "one sentence what was missing",
+  "ideal": "ideal answer in 2-3 sentences",
+  "correct_answer": "correct answer 2-3 sentences",
+  "improvement_tip": "one specific tip",
+  "topic": "topic name"
+}
+Be concise. JSON only. No markdown.`
 
   const recentHistory = conversationHistory.slice(-6)
-  const messages = [...recentHistory, { role: 'user', content: userAnswer }]
+  const userMsg = questionText?.trim()
+    ? `Question: ${questionText}\n\nCandidate answer: ${userAnswer}`
+    : userAnswer
+  const messages = [...recentHistory, { role: 'user', content: userMsg }]
 
-  const raw = await callClaude({ system, messages, maxTokens: 800, model: HAIKU })
+  const raw = await callClaude({ system, messages, maxTokens: 500, model: HAIKU, timeoutMs: 15000 })
 
   const parseFeedback = (text) => {
     const match = text.match(/\{[\s\S]*\}/)
@@ -345,34 +341,19 @@ Question ${questionNumber} of ${totalQuestions}.${questionNumber === totalQuesti
 
   let feedback = parseFeedback(raw)
 
-  // First retry: JSON parse failed
+  // Retry: JSON parse failed
   if (!feedback) {
     const retry = await callClaude({
       system,
       messages: [...messages, { role: 'assistant', content: raw }, { role: 'user', content: 'Respond with only the JSON object.' }],
-      maxTokens: 800,
+      maxTokens: 500,
       model: HAIKU,
+      timeoutMs: 15000,
     })
     feedback = parseFeedback(retry)
     if (!feedback) {
-      return { score: 5, good: 'Answer received.', missing: 'Could not parse feedback.', ideal: '', correct_answer: '', topic: '', improvement_tip: '', star_breakdown: { situation: 'N/A', task: 'N/A', action: 'N/A', result: 'N/A' }, next_question: '' }
+      return { score: 5, good: 'Answer received.', missing: 'Could not parse feedback.', ideal: '', correct_answer: '', topic: '', improvement_tip: '' }
     }
-  }
-
-  // Second retry: next_question missing mid-session
-  if (!feedback.next_question?.trim() && questionNumber < totalQuestions) {
-    const retryQ = await callClaude({
-      system,
-      messages: [
-        ...messages,
-        { role: 'assistant', content: JSON.stringify(feedback) },
-        { role: 'user', content: `You forgot next_question. This is question ${questionNumber} of ${totalQuestions}. Return the same JSON but with a non-empty next_question for question ${questionNumber + 1}.` },
-      ],
-      maxTokens: 800,
-      model: HAIKU,
-    })
-    const retried = parseFeedback(retryQ)
-    if (retried?.next_question?.trim()) return retried
   }
 
   return feedback
@@ -492,5 +473,71 @@ Role: ${role}, Type: ${interviewType}, Sector: ${sector || 'it_tech'}`
     return JSON.parse(match[0])
   } catch {
     return { overallScore: 6, verdict: 'Almost Ready', strengths: [], improvements: [], top_advice: '', weak_areas: [] }
+  }
+}
+
+// ── generateAllQuestions ──────────────────────────────────────────────────────
+export async function generateAllQuestions({
+  sector,
+  role,
+  interviewType,
+  questionCount,
+  resumeText,
+  state,
+  userProfile,
+  previousQuestions = [],
+}) {
+  const prompt = buildSectorPrompt(
+    sector, role, interviewType,
+    state, state, { resumeText, ...userProfile },
+    questionCount, previousQuestions
+  )
+
+  const system = `${prompt}
+
+IMPORTANT TASK:
+Generate exactly ${questionCount} interview questions for this candidate.
+
+Return ONLY a valid JSON array. No other text. No markdown. Just JSON.
+
+Format:
+[
+  {
+    "id": 1,
+    "question": "question text here",
+    "topic": "topic name",
+    "tip": "one line tip for answering"
+  }
+]
+
+Rules:
+- Never number the questions in the question text
+- Each question covers a unique and different topic
+- Based on official syllabus for the role
+- Appropriate for ${role} role
+- Never start any question with "Question X of Y:" or "Q1:" or any prefix`
+
+  const raw = await callClaude({
+    system,
+    messages: [{ role: 'user', content: 'Generate the interview questions now.' }],
+    maxTokens: 4000,
+    model: HAIKU,
+  })
+
+  try {
+    const cleaned = raw
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim()
+
+    const questions = JSON.parse(cleaned)
+
+    if (!Array.isArray(questions)) throw new Error('Not an array')
+
+    return questions.slice(0, questionCount)
+  } catch (err) {
+    console.error('generateAllQuestions parse error:', err)
+    console.error('Raw text:', raw)
+    throw new Error('Failed to generate questions')
   }
 }

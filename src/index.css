@@ -119,6 +119,27 @@ code, pre, .font-mono {
   to   { transform: scaleY(1.4); }
 }
 
+@keyframes ping {
+  0% { transform: scale(1); opacity: 0.3; }
+  75%, 100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+}
+
+@keyframes loading-bar {
+  0% { width: 0%; margin-left: 0; }
+  50% { width: 70%; margin-left: 15%; }
+  100% { width: 0%; margin-left: 100%; }
+}
+
+@keyframes text-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

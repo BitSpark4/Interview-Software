@@ -7,8 +7,8 @@ import {
 import { useInterview } from '../hooks/useInterview'
 import useSpeechToText from '../hooks/useSpeechToText'
 import { useAuth } from '../hooks/useAuth'
-import { saveAskedQuestion } from '../lib/claudeApi'
-import { BrainLoadingAnimation, ConfettiAnimation, MicAnimation } from '../components/LottieAnimation'
+import { saveAskedQuestion, generateAllQuestions } from '../lib/claudeApi'
+import { ConfettiAnimation, MicAnimation } from '../components/LottieAnimation'
 import { supabase } from '../lib/supabase'
 import Spinner from '../components/Spinner'
 import StarBreakdown from '../components/StarBreakdown'
@@ -161,7 +161,7 @@ export default function InterviewSession() {
 
   const {
     messages, loading, setLoading, questionNumber,
-    isComplete, sessionData, streamError, loadSession, sendAnswer,
+    isComplete, sessionData, streamError, loadSession, sendAnswer, saveFirstQuestion,
   } = useInterview()
 
   const [input, setInput]           = useState('')
@@ -200,6 +200,12 @@ export default function InterviewSession() {
   const [initLoading, setInitLoading] = useState(true)
   const [retrying, setRetrying]     = useState(false)
   const [guideOpen, setGuideOpen]   = useState(false)
+  const [allQuestions, setAllQuestions]           = useState([])
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [isPreloading, setIsPreloading]           = useState(false)
+  const [preloadError, setPreloadError]           = useState(null)
+  const [currentTip, setCurrentTip]               = useState(null)
+  const [loadingTip, setLoadingTip]               = useState('Analyzing your response...')
   const timer = useTimer(false)   // always count — don't pause during AI calls
   const textareaRef = useAutoResize(input)
 
@@ -207,13 +213,52 @@ export default function InterviewSession() {
     if (!sessionId) { navigate('/dashboard'); return }
     async function init() {
       try {
-        const session = await loadSession(sessionId)
+        const session = await loadSession(sessionId, true)
         if (session.completed) navigate(`/report/${sessionId}`, { replace: true })
       } catch (err) { setError(err.message) }
       finally { setInitLoading(false) }
     }
     init()
   }, [sessionId])
+
+  // Preload all questions once sessionData is available
+  useEffect(() => {
+    if (!sessionData || initLoading) return
+    async function preload() {
+      try {
+        setIsPreloading(true)
+        const { data: { user } } = await supabase.auth.getUser()
+        const prevQs = JSON.parse(sessionStorage.getItem(`pq_${sessionData.sector}`) || '[]')
+        const questions = await generateAllQuestions({
+          sector: sessionData.sector,
+          role: sessionData.role,
+          interviewType: sessionData.interviewType,
+          questionCount: sessionData.totalQuestions || 5,
+          resumeText: sessionData.resumeText || '',
+          state: sessionData.state || 'maharashtra',
+          userProfile: userProfile || {},
+          previousQuestions: prevQs,
+        })
+        setAllQuestions(questions)
+        setCurrentTip(questions[0]?.tip || null)
+        // Save Q1 to DB and seed claudeHistory so evaluation has question context
+        if (questions[0]?.question) {
+          await saveFirstQuestion(questions[0].question)
+        }
+        // Save all to asked_questions to prevent repeats
+        if (user) {
+          questions.forEach(async (q) => {
+            try { await saveAskedQuestion(user.id, sessionData.sector, q.question) } catch (_) {}
+          })
+        }
+      } catch (err) {
+        setPreloadError('Could not load questions. Please refresh.')
+      } finally {
+        setIsPreloading(false)
+      }
+    }
+    preload()
+  }, [sessionData, initLoading])
 
   useEffect(() => {
     if (isComplete) {
@@ -240,6 +285,15 @@ export default function InterviewSession() {
 
   const currentQuestion = [...messages].reverse().find(m => m.is_question)
 
+  const cleanQuestionText = (text) => {
+    if (!text) return ''
+    return text
+      .replace(/^Question\s+\d+\s+of\s+\d+\s*:\s*/i, '')
+      .replace(/^Q\d+\s*:\s*/i, '')
+      .replace(/^Question\s+\d+\s*:\s*/i, '')
+      .trim()
+  }
+
   async function handleSubmit(e) {
     e?.preventDefault()
     if (loading) return
@@ -250,8 +304,17 @@ export default function InterviewSession() {
     setError('')
     setLoading(true)
     try {
-      const result = await sendAnswer(answer)
-      if (result.isComplete) setGeneratingReport(true)
+      const nextIndex = currentQuestionIndex + 1
+      const nextPreloadedQ = allQuestions[nextIndex]?.question || null
+      const currentPreloadedQ = allQuestions[currentQuestionIndex]?.question || ''
+      const result = await sendAnswer(answer, nextPreloadedQ, currentPreloadedQ)
+      if (result.isComplete) {
+        setGeneratingReport(true)
+      } else {
+        setCurrentQuestionIndex(nextIndex)
+        setCurrentTip(allQuestions[nextIndex]?.tip || null)
+        setGuideOpen(false)
+      }
     } catch (err) {
       setError(err.message || 'Failed to get response. Please try again.')
     } finally {
@@ -266,15 +329,70 @@ export default function InterviewSession() {
   const totalQuestions = sessionData?.totalQuestions || 10
   const lastFeedbackMsg = [...messages].reverse().find(m => m.sender === 'ai' && !m.is_question && m.feedback)
   const latestFeedback  = lastFeedbackMsg?.feedback
-  const hasAnsweredCurrentQ = messages.some(m => m.sender === 'user' && m.question_num === currentQuestion?.question_num)
+  const hasAnsweredCurrentQ = messages.some(m => m.sender === 'user' && m.question_num === currentQuestionIndex + 1)
+  const preloadedQuestion = allQuestions[currentQuestionIndex]?.question || null
+  const isEvaluating = loading && hasAnsweredCurrentQ && !generatingReport
 
-  if (initLoading) {
+  const loadingTips = [
+    'Analyzing your response...',
+    'Checking key concepts covered...',
+    'Comparing with ideal answer...',
+    'Calculating your score...',
+    'Preparing personalized feedback...',
+    'Almost ready...',
+  ]
+
+  useEffect(() => {
+    if (!isEvaluating) { setLoadingTip('Analyzing your response...'); return }
+    let i = 0
+    const interval = setInterval(() => {
+      i = (i + 1) % loadingTips.length
+      setLoadingTip(loadingTips[i])
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [isEvaluating])
+
+  if (initLoading || isPreloading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <Spinner size={28} color="border-blue-500" />
-          <p className="text-gray-500 text-sm font-mono">Preparing your interview…</p>
+      <div style={{
+        minHeight: '100vh',
+        background: '#0A0F1E',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '24px',
+      }}>
+        <div style={{
+          width: '60px',
+          height: '60px',
+          border: '3px solid #1E293B',
+          borderTopColor: '#2563EB',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <div style={{ textAlign: 'center' }}>
+          <p style={{ color: '#F8FAFC', fontSize: '18px', fontWeight: '600', margin: '0 0 8px' }}>
+            Preparing your interview...
+          </p>
+          <p style={{ color: '#64748B', fontSize: '14px', margin: 0 }}>
+            Loading all questions for instant experience
+          </p>
         </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#2563EB',
+              animation: `pulse 1s infinite ${i * 0.2}s`,
+            }} />
+          ))}
+        </div>
+        {preloadError && (
+          <p style={{ color: '#EF4444', fontSize: '13px', marginTop: '8px' }}>{preloadError}</p>
+        )}
       </div>
     )
   }
@@ -353,12 +471,53 @@ export default function InterviewSession() {
 
             {/* Question text */}
             <div>
-              {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', gap: '12px' }}>
-                  <BrainLoadingAnimation size={80} />
-                  <p style={{ color: '#64748B', fontSize: '13px', textAlign: 'center' }}>AI is evaluating your answer...</p>
+              {isEvaluating ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', gap: '32px' }}>
+                  {/* Brain pulse rings */}
+                  <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+                    {[0, 1, 2].map(i => (
+                      <div key={i} style={{
+                        position: 'absolute',
+                        inset: `${i * -12}px`,
+                        borderRadius: '50%',
+                        border: '2px solid #2563EB',
+                        opacity: 0.3 - i * 0.08,
+                        animation: `ping 1.5s cubic-bezier(0,0,0.2,1) infinite ${i * 0.3}s`,
+                      }} />
+                    ))}
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: '50%',
+                      background: 'rgba(37,99,235,0.15)', border: '2px solid rgba(37,99,235,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px',
+                    }}>🧠</div>
+                  </div>
+                  {/* Text + dots */}
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ color: '#F8FAFC', fontSize: '16px', fontWeight: '600', margin: '0 0 8px', animation: 'text-pulse 2s infinite' }}>
+                      AI is evaluating your answer
+                    </p>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '12px' }}>
+                      {[0, 1, 2, 3].map(i => (
+                        <div key={i} style={{
+                          width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB',
+                          animation: 'bounce 1.2s ease-in-out infinite',
+                          animationDelay: `${i * 0.15}s`,
+                        }} />
+                      ))}
+                    </div>
+                    <p style={{ color: '#64748B', fontSize: '13px', marginTop: '16px', fontStyle: 'italic', maxWidth: '280px' }}>
+                      {loadingTip}
+                    </p>
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ width: '200px', height: '3px', background: '#1E293B', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', background: 'linear-gradient(90deg, #2563EB, #7C3AED)',
+                      borderRadius: '2px', animation: 'loading-bar 3s ease-in-out infinite',
+                    }} />
+                  </div>
                 </div>
-              ) : currentQuestion?.content?.trim() ? (
+              ) : preloadedQuestion ? (
                 <>
                   {/* Mic indicator */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
@@ -366,45 +525,20 @@ export default function InterviewSession() {
                     <span style={{ color: '#64748B', fontSize: '12px' }}>Interviewer is asking</span>
                   </div>
                   <p className="text-gray-100 whitespace-pre-wrap leading-relaxed font-medium" style={{ fontSize: 17 }}>
-                    {currentQuestion.content}
+                    {cleanQuestionText(preloadedQuestion)}
                   </p>
                 </>
-              ) : currentQuestion && !currentQuestion.content?.trim() ? (
-                // FIX 4: question object exists but content is empty — show retry
-                <div className="space-y-3 py-1">
-                  <div className="space-y-2 animate-pulse">
-                    <div className="h-4 bg-gray-800 rounded w-3/4" />
-                    <div className="h-4 bg-gray-800 rounded w-full" />
-                    <div className="h-4 bg-gray-800 rounded w-2/3" />
-                  </div>
-                  <p className="text-gray-500 text-sm">Could not load question.</p>
-                  <button
-                    type="button"
-                    disabled={retrying}
-                    onClick={async () => {
-                      setRetrying(true)
-                      await new Promise(r => setTimeout(r, 1500))
-                      window.location.reload()
-                    }}
-                    className="text-xs text-blue-400 hover:text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    {retrying ? 'Retrying…' : 'Retry'}
-                  </button>
-                </div>
               ) : (
-                // No question at all yet
+                // Fallback — should not happen with preloading
                 <div className="flex items-center gap-2.5 py-2">
                   <CircleNotch size={15} className="text-blue-500 animate-spin shrink-0" />
                   <span className="text-gray-500 text-sm">Loading question…</span>
                 </div>
               )}
-              {streamError && (
-                <p className="text-red-400 text-sm mt-3">{streamError}</p>
-              )}
             </div>
 
             {/* Collapsible "How to answer well" guide */}
-            {currentQuestion?.content?.trim() && !hasAnsweredCurrentQ && !loading && (
+            {preloadedQuestion && !hasAnsweredCurrentQ && !loading && (
               <div
                 className="rounded-xl overflow-hidden"
                 style={{ border: '1px solid rgba(139,92,246,0.2)' }}
@@ -440,7 +574,7 @@ export default function InterviewSession() {
             )}
 
             {/* Tip — shown before answering, only when question text is visible */}
-            {currentQuestion?.content?.trim() && !hasAnsweredCurrentQ && !loading && (
+            {preloadedQuestion && !hasAnsweredCurrentQ && !loading && (
               <div
                 className="rounded-xl p-4"
                 style={{ background: 'rgba(245,158,11,0.08)', borderLeft: '3px solid #F59E0B', border: '1px solid rgba(245,158,11,0.2)' }}
@@ -452,11 +586,11 @@ export default function InterviewSession() {
                   <Lightbulb size={12} /> Tip
                 </p>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  {sessionData?.interviewType === 'behavioral'
+                  {currentTip || (sessionData?.interviewType === 'behavioral'
                     ? 'Use the STAR method: Situation → Task → Action → Result. Quantify your results.'
                     : sessionData?.interviewType === 'technical'
                     ? 'Think out loud. Explain your reasoning before diving into the answer.'
-                    : 'Be specific and back up claims with concrete examples from past experience.'}
+                    : 'Be specific and back up claims with concrete examples from past experience.')}
                 </p>
               </div>
             )}

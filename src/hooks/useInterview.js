@@ -109,7 +109,7 @@ export function useInterview() {
   }
 
   // ── loadSession ──────────────────────────────────────────────
-  async function loadSession(id) {
+  async function loadSession(id, skipFirstQuestion = false) {
     const { data: session, error } = await supabase
       .from('sessions')
       .select('*')
@@ -133,7 +133,7 @@ export function useInterview() {
     setSessionData(config)
 
     // ── First load: no messages yet — stream Q1 async ────────
-    if (!msgs || msgs.length === 0) {
+    if (!skipFirstQuestion && (!msgs || msgs.length === 0)) {
       streamFirstQuestion(id, config) // fire-and-forget; caller returns immediately
       return session
     }
@@ -172,8 +172,36 @@ export function useInterview() {
     return session
   }
 
+  // ── saveFirstQuestion — saves Q1 to DB and seeds claudeHistory ──
+  async function saveFirstQuestion(questionText) {
+    if (!sessionId || !questionText?.trim()) return
+    try {
+      await supabase.from('messages').insert({
+        session_id: sessionId,
+        question_num: 1,
+        sender: 'ai',
+        content: questionText,
+        is_question: true,
+      })
+    } catch (_) {}
+    const initHistory = [
+      { role: 'user', content: 'Begin the interview.' },
+      { role: 'assistant', content: questionText },
+    ]
+    sessionStorage.setItem(`ch_${sessionId}`, JSON.stringify(initHistory))
+    setClaudeHistory(initHistory)
+    setMessages([{
+      id: Date.now(),
+      session_id: sessionId,
+      question_num: 1,
+      sender: 'ai',
+      content: questionText,
+      is_question: true,
+    }])
+  }
+
   // ── sendAnswer ───────────────────────────────────────────────
-  async function sendAnswer(answerText) {
+  async function sendAnswer(answerText, overrideNextQuestion = null, questionText = '') {
     if (!sessionId || !sessionData) throw new Error('No active session')
     const currentQ = questionNumber
 
@@ -194,18 +222,12 @@ export function useInterview() {
       conversationHistory: claudeHistory,
       userAnswer: answerText,
       questionNumber: currentQ,
-      interviewType: sessionData.interviewType,
-      role: sessionData.role,
-      companyFocus: sessionData.companyFocus,
-      resumeText: sessionData.resumeText,
-      sector: sessionData.sector,
-      state: sessionData.state,
-      studentProfile: sessionData.studentProfile,
       totalQuestions: sessionData.totalQuestions || 10,
+      questionText,
     })
 
     // 4. Save AI feedback message to DB
-    await supabase.from('messages').insert({
+    const { error: fbErr } = await supabase.from('messages').insert({
       session_id: sessionId,
       question_num: currentQ,
       sender: 'ai',
@@ -216,6 +238,7 @@ export function useInterview() {
       topic: feedback.topic || '',
       is_question: false,
     })
+    if (fbErr) console.error('Feedback save error:', fbErr.message)
 
     // Attach feedback to user message in display
     setMessages(prev => prev.map(m => m.id === tempId ? { ...m, feedback } : m))
@@ -228,8 +251,8 @@ export function useInterview() {
 
     const total = sessionData.totalQuestions || 10
     if (currentQ < total) {
-      // 5a. Save next question — guard against empty
-      const nextQuestion = feedback.next_question?.trim()
+      // 5a. Save next question — use preloaded override if available
+      const nextQuestion = overrideNextQuestion?.trim() || feedback.next_question?.trim()
       if (!nextQuestion) throw new Error('Could not generate the next question. Please try again.')
       await supabase.from('messages').insert({
         session_id: sessionId,
@@ -328,5 +351,5 @@ export function useInterview() {
     }
   }
 
-  return { messages, loading, setLoading, questionNumber, isComplete, sessionId, sessionData, streamError, createSession, sendAnswer, loadSession }
+  return { messages, loading, setLoading, questionNumber, isComplete, sessionId, sessionData, streamError, createSession, sendAnswer, loadSession, saveFirstQuestion }
 }

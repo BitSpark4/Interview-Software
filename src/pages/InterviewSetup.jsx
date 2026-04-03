@@ -266,7 +266,7 @@ export default function InterviewSetup() {
   const [experience, setExperience]   = useState('')
   const [showUpload, setShowUpload]   = useState(false)
   const [resumeError, setResumeError] = useState('')
-  const [questionCount, setQuestionCount] = useState(10)
+  const [questionCount, setQuestionCount] = useState(5)
   const [showSwitchWarning, setShowSwitchWarning] = useState(false)
   const [savingGoalChange, setSavingGoalChange]   = useState(false)
 
@@ -274,6 +274,12 @@ export default function InterviewSetup() {
   const primarySectorUI = FROM_DB[primarySector] ?? primarySector // UI format
   const primaryLabel    = SECTORS.find(s => s.id === primarySectorUI)?.title ?? primarySector
   const pendingLabel    = SECTORS.find(s => s.id === pendingSector)?.title ?? pendingSector
+  const isPro           = userProfile?.plan === 'pro'
+
+  // Set question count default based on plan
+  useEffect(() => {
+    setQuestionCount(isPro ? 10 : 5)
+  }, [isPro])
 
   // Auto-select career goal sector and skip straight to role step on first load
   useEffect(() => {
@@ -825,9 +831,8 @@ export default function InterviewSetup() {
     const roleLabel   = ROLES_BY_SECTOR[sector]?.find(r => r.id === role)?.label ?? ''
     const typeLabel   = INTERVIEW_TYPES_BY_SECTOR[sector]?.find(t => t.id === interviewType)?.label ?? ''
     const eduLabel    = EDUCATION_LEVELS.find(e => e.id === education)?.label ?? ''
-    const isPro       = userProfile?.plan === 'pro'
     const Q_LABELS    = { 5: 'Quick practice', 10: 'Standard session', 15: 'Extended practice', 20: 'Deep preparation', 30: 'Full mock test' }
-    const qLabel      = isPro ? `${questionCount} questions` : '10 questions (Free plan)'
+    const qLabel      = isPro ? `${questionCount} questions` : '5 questions (Free plan)'
 
     const rows = [
       { label: 'Sector',    value: sectorLabel },
@@ -877,17 +882,17 @@ export default function InterviewSetup() {
                             background: active ? 'rgba(37,99,235,0.12)' : '#1E293B',
                             border: active ? '2px solid #2563EB' : '1px solid #334155',
                             color: active ? '#2563EB' : '#94A3B8',
-                            opacity: locked ? 0.4 : 1,
+                            opacity: locked ? 0.35 : 1,
                             cursor: locked ? 'not-allowed' : 'pointer',
                             pointerEvents: locked ? 'none' : 'auto',
                           }}
                         >{n}</button>
                         {locked && (
                           <span style={{
-                            position: 'absolute', top: -6, right: -4,
+                            position: 'absolute', top: -6, right: -6,
                             background: '#F59E0B', color: '#000',
-                            fontSize: 8, fontWeight: 700,
-                            padding: '1px 4px', borderRadius: 4,
+                            fontSize: 9, fontWeight: 700,
+                            padding: '2px 6px', borderRadius: 20,
                             lineHeight: 1.4,
                           }}>PRO</span>
                         )}
@@ -900,10 +905,10 @@ export default function InterviewSetup() {
                     {questionCount} — {Q_LABELS[questionCount]}
                   </p>
                 ) : (
-                  <p className="text-center mt-2" style={{ fontSize: 12, color: '#F59E0B' }}>
-                    Free plan: 5 questions per session ·{' '}
-                    <Link to="/upgrade" style={{ color: '#F59E0B', textDecoration: 'underline' }}>
-                      Upgrade to choose up to 30
+                  <p className="text-center mt-2" style={{ fontSize: 12, color: '#64748B' }}>
+                    Free plan includes 5 questions{' '}
+                    <Link to="/upgrade" style={{ color: '#F59E0B', textDecoration: 'none' }}>
+                      Upgrade to Pro for more →
                     </Link>
                   </p>
                 )}
