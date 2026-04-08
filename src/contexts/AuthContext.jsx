@@ -79,15 +79,52 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
+  // ── generateReferralCode — unique IQ-XXXX-NNNN code ─────────────────────
+  function generateReferralCode(name) {
+    const prefix = (name || 'USER').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 4).padEnd(4, 'X')
+    const digits = String(Math.floor(1000 + Math.random() * 9000))
+    return `IQ-${prefix}-${digits}`
+  }
+
   // Fetches profile in the background — never blocks the auth loading state
   async function fetchProfile(userId) {
     try {
       const { data } = await supabase
         .from('users')
-        .select('id, email, name, plan, interviews_used, total_sessions, average_score, streak_count, resume_url, resume_filename, resume_uploaded_at, skills, target_role, created_at, is_admin, ats_score, ats_feedback, ats_analyzed_at, primary_sector, career_goal, last_active_sector, onboarding_complete, last_login_at, last_login_device')
+        .select('id, email, name, plan, interviews_used, total_sessions, average_score, streak_count, resume_url, resume_filename, resume_uploaded_at, skills, target_role, created_at, is_admin, ats_score, ats_feedback, ats_analyzed_at, primary_sector, career_goal, last_active_sector, onboarding_complete, last_login_at, last_login_device, referral_code, referred_by, referral_count, free_months_earned')
         .eq('id', userId)
         .single()
       if (mounted.current) setUserProfile(data ?? null)
+
+      // ── Referral: generate code if missing, capture referred_by ──────────
+      if (data) {
+        const updates = {}
+
+        // Generate referral code for new user
+        if (!data.referral_code) {
+          let code = generateReferralCode(data.name || data.email)
+          // Check uniqueness with retry
+          for (let attempts = 0; attempts < 3; attempts++) {
+            const { data: existing } = await supabase.from('users').select('id').eq('referral_code', code).maybeSingle()
+            if (!existing) break
+            code = generateReferralCode(data.name || data.email)
+          }
+          updates.referral_code = code
+        }
+
+        // Capture referred_by from localStorage (set by /ref/:code redirect)
+        const storedCode = localStorage.getItem('interviewiq_referral_code')
+        if (storedCode && !data.referred_by && storedCode !== (updates.referral_code || data.referral_code)) {
+          updates.referred_by = storedCode
+          localStorage.removeItem('interviewiq_referral_code')
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('users').update(updates).eq('id', userId)
+          if (mounted.current) setUserProfile({ ...data, ...updates })
+        }
+      }
+
       // Update last_active_at on every session restore (fire-and-forget)
       supabase.from('users').update({ last_active_at: new Date().toISOString() }).eq('id', userId).then(() => {})
     } catch {

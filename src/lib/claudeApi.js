@@ -49,17 +49,79 @@ CRITICAL RULES — FOLLOW EXACTLY:
 3. Plain text only — no markdown no asterisks no hashtags
 4. One question at a time — never ask two together
 5. Be direct — no long introductions before question
-6. CRITICAL: Never start any question with "Question X of Y:" or "Q1:" or any numbering prefix whatsoever. Just ask the question directly. The UI already shows question numbers.
-   Example of WRONG format: "Question 3 of 10: Tell me about..."
-   Example of CORRECT format: "Tell me about..."
+6. NEVER start any question with a number or prefix of any kind.
+   WRONG: "Question 3 of 10: Tell me about..." or "Q1: Tell me..."
+   CORRECT: "Tell me about..." — the UI already shows question numbers.
 
-NEVER REPEAT THESE QUESTIONS:
-${previousQuestions.length > 0 ? previousQuestions.slice(0, 30).join('\n') : 'No previous questions yet'}
-
-If repeating a topic ask from completely different angle.
+NEVER REPEAT THESE QUESTIONS (ask from a completely different angle if topic must recur):
+${previousQuestions.length > 0 ? previousQuestions.slice(0, 20).map((q, i) => `${i + 1}. ${q}`).join('\n') : 'No previous questions yet'}
 `.trim()
 
-export function buildSectorPrompt(sector, role, interviewType, companyFocus, state, profile, totalQuestions = 10, previousQuestions = []) {
+const DSA_PILLS = new Set([
+  'Arrays','Backtracking','Big-O Notation','Binary Tree','Bit Manipulation','Blockchain',
+  'Data Structures','Divide and Conquer','Dynamic Programming','Fibonacci Sequence',
+  'Graph Theory','Greedy Algorithms','Hash Tables','Heaps and Maps','Linked Lists','Queues',
+  'Recursion','Searching Algorithms','Sorting Algorithms','Stacks','Strings',
+  'Tree Data Structure','Trie Data Structure',
+])
+
+const SYSTEM_DESIGN_PILLS = new Set([
+  'API Design','Availability and Reliability','Caching','CAP Theorem','Concurrency',
+  'Cryptography','Databases','Docker','Domain Driven Design','Kubernetes',
+  'Layering and Middleware','Load Balancing','Microservices','NoSQL',
+  'Reactive Systems','SOA','Software Architecture','XML',
+])
+
+const BEHAVIORAL_PILLS = new Set([
+  'Junior Engineering BQ','Senior Engineering BQ','Staff and Principal BQ','Engineering Management BQ',
+])
+
+const BEHAVIORAL_LEVEL_PROMPTS = {
+  'Junior Engineering BQ': 'Ask entry-level behavioral questions focused on learning ability, teamwork, and handling feedback.',
+  'Senior Engineering BQ': 'Ask senior-level behavioral questions focused on leadership, technical decision-making, and measurable impact.',
+  'Staff and Principal BQ': 'Ask staff/principal-level questions focused on org-wide influence, cross-team collaboration, and technical strategy.',
+  'Engineering Management BQ': 'Ask engineering management questions focused on people management, hiring, performance, and team strategy.',
+}
+
+function buildStackFocus(selectedStack = []) {
+  if (!selectedStack || selectedStack.length === 0) return ''
+
+  const dsaPills        = selectedStack.filter(t => DSA_PILLS.has(t))
+  const systemPills     = selectedStack.filter(t => SYSTEM_DESIGN_PILLS.has(t))
+  const behavioralPills = selectedStack.filter(t => BEHAVIORAL_PILLS.has(t))
+  const techPills       = selectedStack.filter(t => !DSA_PILLS.has(t) && !SYSTEM_DESIGN_PILLS.has(t) && !BEHAVIORAL_PILLS.has(t))
+
+  const count = selectedStack.length
+  const share = Math.floor(100 / count)
+  const distribution = selectedStack.map((t, i) =>
+    `${t}: ${i === count - 1 ? 100 - share * (count - 1) : share}%`
+  ).join(', ')
+
+  let focus = `
+
+TECH STACK FOCUS — CRITICAL:
+The candidate selected these specific topics: ${selectedStack.join(', ')}.
+Question distribution: ${distribution}.`
+
+  if (techPills.length > 0) {
+    focus += `\nFor technology topics (${techPills.join(', ')}): ask practical coding, architecture, and concept questions directly about these technologies.`
+  }
+  if (dsaPills.length > 0) {
+    focus += `\nFor DSA topics (${dsaPills.join(', ')}): focus on algorithmic thinking and data structure questions. Ask the candidate to walk through their approach, time/space complexity, and edge cases.`
+  }
+  if (systemPills.length > 0) {
+    focus += `\nFor System Design topics (${systemPills.join(', ')}): ask architecture and design questions appropriate for senior-level engineers. Focus on trade-offs, scalability, and real-world constraints.`
+  }
+  if (behavioralPills.length > 0) {
+    const bqInstructions = behavioralPills.map(b => BEHAVIORAL_LEVEL_PROMPTS[b] || '').filter(Boolean).join(' ')
+    focus += `\nFor Behavioral questions: use the STAR method (Situation, Task, Action, Result). ${bqInstructions}`
+  }
+
+  focus += `\nOnly ask about the selected topics above. NEVER ask about any other technology or topic.`
+  return focus
+}
+
+export function buildSectorPrompt(sector, role, interviewType, companyFocus, state, profile, totalQuestions = 10, previousQuestions = [], selectedStack = []) {
   const BASE = buildBaseRules(totalQuestions, previousQuestions)
   const stateContext = state === 'maharashtra'
     ? 'Include Maharashtra specific questions about Maratha history, Maharashtra geography, state schemes, and local governance when relevant.'
@@ -200,11 +262,12 @@ Interview rules for IT:
     `.trim(),
   }
 
-  return prompts[sector] || prompts.it_tech
+  const stackFocus = buildStackFocus(selectedStack)
+  return (prompts[sector] || prompts.it_tech) + stackFocus
 }
 
 // ── getPreviousQuestions — fetch last 50 asked questions for this user+sector ──
-const getPreviousQuestions = async (userId, sector) => {
+export const getPreviousQuestions = async (userId, sector) => {
   if (!userId) return []
   try {
     const { data } = await supabase
@@ -263,11 +326,27 @@ async function fetchSyllabusContext(sector) {
   }
 }
 
+async function getAuthHeaders() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const { data: profile } = session?.user?.id
+      ? await supabase.from('users').select('plan').eq('id', session.user.id).single()
+      : { data: null }
+    return {
+      'Authorization': session?.access_token ? `Bearer ${session.access_token}` : '',
+      plan: profile?.plan || 'free',
+    }
+  } catch {
+    return { plan: 'free' }
+  }
+}
+
 async function callClaude({ system, messages, maxTokens = 1024, model = SONNET, timeoutMs = 30000 }) {
+  const auth = await getAuthHeaders()
   const res = await fetchWithTimeout(PROXY_URL, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+    headers: { 'Content-Type': 'application/json', 'Authorization': auth.Authorization || '' },
+    body:    JSON.stringify({ model, max_tokens: maxTokens, system, messages, plan: auth.plan }),
   }, timeoutMs)
 
   if (!res.ok) {
@@ -308,28 +387,19 @@ export async function startInterview({ role, interviewType, companyFocus, resume
 }
 
 // ── evaluateAnswer ────────────────────────────────────────────────────────────
+// Stateless: sends only the question + answer. No conversation history.
+// This keeps payload size identical regardless of question number.
 export async function evaluateAnswer({
-  conversationHistory, userAnswer, questionNumber,
-  totalQuestions = 10, questionText = '',
+  userAnswer, questionText = '',
 }) {
-  const system = `You are an interview evaluator.
-Evaluate the answer and respond ONLY with this exact JSON — no other text:
-{
-  "score": 7,
-  "good": "one sentence what was good",
-  "missing": "one sentence what was missing",
-  "ideal": "ideal answer in 2-3 sentences",
-  "correct_answer": "correct answer 2-3 sentences",
-  "improvement_tip": "one specific tip",
-  "topic": "topic name"
-}
-Be concise. JSON only. No markdown.`
+  const system = `Evaluate the interview answer. Return ONLY this JSON, no other text:
+{"score":7,"good":"...","missing":"...","ideal":"...","correct_answer":"...","improvement_tip":"...","topic":"..."}
+score 1-10. good/missing/ideal/correct_answer: 1-2 sentences. improvement_tip: one actionable tip. topic: subject area.`
 
-  const recentHistory = conversationHistory.slice(-6)
   const userMsg = questionText?.trim()
     ? `Question: ${questionText}\n\nCandidate answer: ${userAnswer}`
-    : userAnswer
-  const messages = [...recentHistory, { role: 'user', content: userMsg }]
+    : `Candidate answer: ${userAnswer}`
+  const messages = [{ role: 'user', content: userMsg }]
 
   const raw = await callClaude({ system, messages, maxTokens: 500, model: HAIKU, timeoutMs: 15000 })
 
@@ -476,68 +546,122 @@ Role: ${role}, Type: ${interviewType}, Sector: ${sector || 'it_tech'}`
   }
 }
 
+// ── SECTOR_REFERENCES — official syllabus anchors for batch generation ────────
+const SECTOR_REFERENCES = {
+  it_tech:     'Follow real interview patterns at top Indian IT companies (TCS, Infosys, Flipkart, Swiggy). Cover coding, architecture, and system design based on actual technical rounds.',
+  government:  'Follow UPSC/MPSC/SSC official syllabus: Polity, History, Geography, Economy, Current Affairs, and state-specific governance topics.',
+  banking:     'Follow IBPS PO/SBI PO official pattern: Banking Awareness, RBI policies, repo rate, financial inclusion, digital banking/UPI, and reasoning.',
+  engineering: 'Follow GATE syllabus and PSU interview patterns: core engineering fundamentals, numerical problems, and recent technological developments.',
+  medical:     'Follow NEET PG/NBE official curriculum: clinical cases, pharmacology, surgery, medicine, and current NMC/ICMR guidelines.',
+  students:    'Follow JEE/MHT-CET official syllabus: Physics, Chemistry, Mathematics fundamentals and HR aptitude for freshers.',
+  business:    'Follow CAT/IIM interview patterns: case studies, business fundamentals, strategy, finance, and current economic policy.',
+}
+
 // ── generateAllQuestions ──────────────────────────────────────────────────────
 export async function generateAllQuestions({
   sector,
   role,
-  interviewType,
   questionCount,
-  resumeText,
-  state,
-  userProfile,
   previousQuestions = [],
+  selectedStack = [],
 }) {
-  const prompt = buildSectorPrompt(
-    sector, role, interviewType,
-    state, state, { resumeText, ...userProfile },
-    questionCount, previousQuestions
-  )
+  const sectorKey = sector || 'it_tech'
+  const ref = SECTOR_REFERENCES[sectorKey] || SECTOR_REFERENCES.it_tech
 
-  const system = `${prompt}
-
-IMPORTANT TASK:
-Generate exactly ${questionCount} interview questions for this candidate.
-
-Return ONLY a valid JSON array. No other text. No markdown. Just JSON.
-
-Format:
-[
-  {
-    "id": 1,
-    "question": "question text here",
-    "topic": "topic name",
-    "tip": "one line tip for answering"
+  // Weighted stack focus line
+  let stackLine = ''
+  if (selectedStack.length > 0) {
+    const count = selectedStack.length
+    const share = Math.floor(100 / count)
+    const dist = selectedStack.map((t, i) =>
+      `${t}: ${i === count - 1 ? 100 - share * (count - 1) : share}%`
+    ).join(', ')
+    stackLine = `\nSTACK FOCUS: Only ask about ${selectedStack.join(', ')}. Distribution: ${dist}. Ask nothing outside these topics.`
   }
-]
 
-Rules:
-- Never number the questions in the question text
-- Each question covers a unique and different topic
-- Based on official syllabus for the role
-- Appropriate for ${role} role
-- Never start any question with "Question X of Y:" or "Q1:" or any prefix`
+  // Last 20 asked questions to exclude
+  const prevSlice = previousQuestions.slice(0, 20)
+  const prevLine = prevSlice.length > 0
+    ? `\nNEVER REPEAT THESE QUESTIONS:\n${prevSlice.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+    : ''
+
+  // Difficulty counts
+  const foundCount = Math.max(1, Math.ceil(questionCount * 0.2))
+  const advCount   = Math.max(1, Math.ceil(questionCount * 0.2))
+  const pracCount  = Math.max(1, questionCount - foundCount - advCount)
+
+  const system = `You are an expert interviewer for ${sectorKey} roles in India.
+Generate exactly ${questionCount} interview questions for the role: ${role}.
+
+${ref}${stackLine}
+
+DIFFICULTY DISTRIBUTION (in this order):
+- First ${foundCount} questions: foundational (basic concepts and definitions)
+- Next ${pracCount} questions: practical (applied, scenario-based)
+- Last ${advCount} questions: advanced (complex, problem-solving)
+${prevLine}
+
+STRICT RULES:
+- Return ONLY a valid JSON array. No markdown, no explanation, just the array.
+- Never prefix questions with numbers (wrong: "1. Tell me" — correct: "Tell me")
+- Each question must cover a unique topic. Minimum 20 characters per question.
+
+Return exactly this JSON structure:
+[{"question":"...","topic":"...","tip":"one line answering tip","difficulty":"foundational"}]
+difficulty values: foundational | practical | advanced`
 
   const raw = await callClaude({
     system,
     messages: [{ role: 'user', content: 'Generate the interview questions now.' }],
     maxTokens: 4000,
-    model: HAIKU,
+    model: SONNET,
   })
 
+  // ── Parse with recovery ───────────────────────────────────────────────────
+  let questions = null
+
+  // Try 1: extract JSON array directly
   try {
-    const cleaned = raw
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim()
+    const match = raw.match(/\[[\s\S]*\]/)
+    if (match) questions = JSON.parse(match[0])
+  } catch (_) {}
 
-    const questions = JSON.parse(cleaned)
-
-    if (!Array.isArray(questions)) throw new Error('Not an array')
-
-    return questions.slice(0, questionCount)
-  } catch (err) {
-    console.error('generateAllQuestions parse error:', err)
-    console.error('Raw text:', raw)
-    throw new Error('Failed to generate questions')
+  // Try 2: strip markdown fences then retry
+  if (!Array.isArray(questions)) {
+    try {
+      const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim()
+      const match = cleaned.match(/\[[\s\S]*\]/)
+      if (match) questions = JSON.parse(match[0])
+    } catch (_) {}
   }
+
+  // Try 3: fallback — 5 simple questions via Haiku
+  if (!Array.isArray(questions)) {
+    console.error('generateAllQuestions parse failed — using fallback')
+    try {
+      const fallbackRaw = await callClaude({
+        system: `Generate 5 interview questions for a ${role} in the ${sectorKey} sector. Return ONLY a JSON array:\n[{"question":"...","topic":"...","tip":"...","difficulty":"foundational"}]`,
+        messages: [{ role: 'user', content: 'Generate 5 questions now.' }],
+        maxTokens: 1000,
+        model: HAIKU,
+      })
+      const m = fallbackRaw.match(/\[[\s\S]*\]/)
+      if (m) questions = JSON.parse(m[0])
+    } catch (_) {}
+    if (!Array.isArray(questions)) throw new Error('Failed to generate questions. Please try again.')
+  }
+
+  // ── Quality filter ────────────────────────────────────────────────────────
+  const NUMBER_PREFIX = /^(\d+[\.\):\s]|Q\d+[\.\):]\s)/i
+  const filtered = questions.filter(q =>
+    q &&
+    typeof q.question === 'string' &&
+    q.question.trim().length >= 20 &&
+    q.topic &&
+    !NUMBER_PREFIX.test(q.question.trim())
+  )
+  // Accept filtered set if ≥60% passed quality; otherwise use raw parsed array
+  const usable = filtered.length >= Math.ceil(questionCount * 0.6) ? filtered : questions
+
+  return usable.slice(0, questionCount)
 }

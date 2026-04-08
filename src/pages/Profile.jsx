@@ -5,7 +5,7 @@ import {
   UserCircle, ChartBar, Trophy, Lightning, Target, PlayCircle,
   FileText, CaretRight, UploadSimple, PencilSimple, Trash,
   Crown, Lock, CheckCircle, Warning, FileMagnifyingGlass, ArrowCounterClockwise, Gear,
-  Code, Medal,
+  Code, Medal, Copy, WhatsappLogo, Gift,
 } from '@phosphor-icons/react'
 import { UploadAnimation } from '../components/LottieAnimation'
 import AppLayout from '../components/AppLayout'
@@ -93,8 +93,10 @@ export default function Profile() {
   const [deleting, setDeleting]             = useState(false)
   const [showAllSkills, setShowAllSkills]   = useState(false)
   const [showAllTips, setShowAllTips]       = useState(false)
+  const [copyToast, setCopyToast]           = useState('')
 
   const isPro        = userProfile?.plan === 'pro'
+  const isIOS        = /iPhone|iPad|iPod/i.test(navigator.userAgent)
   const skills       = userProfile?.skills
   const atsScore     = userProfile?.ats_score ?? null
   const atsFeedback  = userProfile?.ats_feedback ?? null
@@ -629,6 +631,11 @@ export default function Profile() {
                 <input id="resume-upload" type="file" accept=".pdf,application/pdf" className="hidden" onChange={handleFile} />
               </label>
             )}
+            {isIOS && (
+              <p className="text-xs mt-2 text-center" style={{ color: '#6B7280' }}>
+                On iPhone/iPad: tap Files app → iCloud Drive → select your PDF
+              </p>
+            )}
           </div>
 
           {/* Account Settings */}
@@ -695,6 +702,92 @@ export default function Profile() {
             </div>
           </div>
         </div>
+
+      {/* ── REFERRAL SECTION ─────────────────────────────────────────────── */}
+      {userProfile?.referral_code && (
+        <div className="mx-auto mt-6" style={{ maxWidth: 900 }}>
+          <div className="rounded-2xl p-6" style={{ background: '#111827', border: '1px solid #1F2937' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <Gift size={18} color="#F59E0B" />
+              <p className="font-bold text-[15px]" style={{ color: '#F9FAFB' }}>Earn free Pro months</p>
+            </div>
+            <p className="text-[13px] mb-5" style={{ color: '#6B7280' }}>Refer a friend who practices and get one free Pro month when they complete their first interview.</p>
+
+            {/* Code display */}
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl flex-1" style={{ background: '#0B0F19', border: '1px solid #374151', minWidth: 180 }}>
+                <span className="font-mono font-bold text-[20px] tracking-widest" style={{ color: '#F59E0B' }}>{userProfile.referral_code}</span>
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(userProfile.referral_code); setCopyToast('Code copied!'); setTimeout(() => setCopyToast(''), 2000) }}
+                className="flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-semibold transition-colors"
+                style={{ background: '#1F2937', border: '1px solid #374151', color: '#F9FAFB' }}
+              >
+                <Copy size={15} /> Copy Code
+              </button>
+            </div>
+
+            {/* Share buttons */}
+            <div className="flex gap-3 flex-wrap mb-5">
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/ref/${userProfile.referral_code}`
+                  navigator.clipboard.writeText(url)
+                  setCopyToast('Link copied!')
+                  setTimeout(() => setCopyToast(''), 2000)
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium"
+                style={{ background: '#1E293B', border: '1px solid #334155', color: '#CBD5E1' }}
+              >
+                <Copy size={14} /> Copy Link
+              </button>
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/ref/${userProfile.referral_code}`
+                  const msg = encodeURIComponent(`I'm using InterviewIQ for interview prep. Try it free: ${url}`)
+                  window.open(`https://wa.me/?text=${msg}`, '_blank')
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium"
+                style={{ background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.25)', color: '#25D366' }}
+              >
+                <WhatsappLogo size={14} /> Share on WhatsApp
+              </button>
+            </div>
+
+            {/* Stats */}
+            <div className="flex gap-6 mb-5">
+              <div>
+                <p className="text-[22px] font-bold" style={{ color: '#F9FAFB' }}>{userProfile.referral_count || 0}</p>
+                <p className="text-[12px]" style={{ color: '#6B7280' }}>Friends referred</p>
+              </div>
+              <div>
+                <p className="text-[22px] font-bold" style={{ color: '#F59E0B' }}>{userProfile.free_months_earned || 0}</p>
+                <p className="text-[12px]" style={{ color: '#6B7280' }}>Free months earned</p>
+              </div>
+            </div>
+
+            {/* How it works */}
+            <div style={{ borderTop: '1px solid #1F2937', paddingTop: 16 }}>
+              <p className="text-[12px] font-semibold mb-3" style={{ color: '#9CA3AF' }}>HOW IT WORKS</p>
+              <div className="flex gap-4 flex-wrap">
+                {['Share your link', 'Friend signs up and practices once', 'You get 1 free Pro month'].map((step, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0" style={{ background: '#F59E0B', color: '#000' }}>{i + 1}</span>
+                    <span className="text-[12px]" style={{ color: '#9CA3AF' }}>{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copy toast */}
+      {copyToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl text-[13px] font-semibold z-50" style={{ background: '#22C55E', color: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}>
+          {copyToast}
+        </div>
+      )}
 
       </div>
 

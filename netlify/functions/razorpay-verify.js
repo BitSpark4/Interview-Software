@@ -30,8 +30,9 @@ export const handler = async (event) => {
   const SUPABASE_URL    = process.env.SUPABASE_URL            || process.env.VITE_SUPABASE_URL
   const SUPABASE_KEY    = process.env.SUPABASE_SERVICE_KEY
 
-  if (!KEY_SECRET || !SUPABASE_URL) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Server misconfigured' }) }
+  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+  if (!KEY_SECRET || !SUPABASE_URL || !SUPABASE_KEY) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Server misconfigured — RAZORPAY_KEY_SECRET, SUPABASE_URL, and SUPABASE_SERVICE_KEY are all required' }) }
   }
 
   try {
@@ -50,19 +51,14 @@ export const handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid payment signature' }) }
     }
 
-    // ── Step 2: Update user plan to 'pro' in Supabase ──────────────────────
-    // If SUPABASE_SERVICE_KEY is available (recommended for production),
-    // it bypasses RLS. Otherwise falls back to anon key (works if user is logged in
-    // at the time of the call, but not ideal).
-    const authKey = SUPABASE_KEY || process.env.VITE_SUPABASE_ANON_KEY
-
+    // ── Step 2: Update user plan to 'pro' in Supabase using service key ──────
     const updateRes = await fetch(
       `${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(userId)}`,
       {
         method: 'PATCH',
         headers: {
-          'apikey':        authKey,
-          'Authorization': `Bearer ${authKey}`,
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
           'Content-Type':  'application/json',
           'Prefer':        'return=minimal',
         },

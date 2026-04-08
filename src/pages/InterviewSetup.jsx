@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  PlayCircle, Warning,
+  PlayCircle, Warning, FileText, Sliders,
   Desktop, Buildings, Bank, Wrench, Heartbeat, GraduationCap, Briefcase,
   Code, Terminal, ChartBar, ChartLineUp, ClipboardText, UserCircle,
   Globe, Shield, BookOpen, Lightning, Target, Brain, Microphone,
   Star, Trophy, Medal, Crown, Gear, Newspaper, Calculator,
-  FirstAidKit, Pill, Scales, Flag,
+  FirstAidKit, Pill, Scales, Flag, Sparkle, CheckCircle,
+  Cloud, Database, Robot, GitBranch, DeviceMobile,
 } from '@phosphor-icons/react'
 import AppLayout from '../components/AppLayout'
 import Spinner from '../components/Spinner'
@@ -84,6 +85,16 @@ const ROLES_BY_SECTOR = {
   ],
 }
 
+// Default stack pre-selection per IT role (used in new personalize step)
+const ROLE_DEFAULT_STACK = {
+  frontend:  { stack: ['React', 'TypeScript', 'HTML5', 'CSS'],           category: 'web'        },
+  backend:   { stack: ['Node.js', 'Python', 'SQL', '.NET Core'],          category: 'web'        },
+  fullstack: { stack: ['React', 'Node.js', 'TypeScript', 'SQL'],          category: 'web'        },
+  data:      { stack: ['Python', 'SQL', 'Apache Spark'],                   category: 'ml'         },
+  pm:        { stack: ['Agile and Scrum', 'OOP'],                          category: 'web'        },
+  hr:        { stack: ['Junior Engineering BQ'],                            category: 'behavioral' },
+}
+
 const EDUCATION_LEVELS = [
   { id: '10th',    icon: BookOpen,      color: '#64748B', label: '10th Standard',       sub: 'Secondary school' },
   { id: '12th',    icon: BookOpen,      color: '#2563EB', label: '12th Standard',       sub: 'Higher secondary' },
@@ -159,6 +170,117 @@ const EXPERIENCE_OPTIONS = [
   { id: '5plus',   icon: Trophy,        color: '#F59E0B', label: '5+ Years',  sub: 'Senior professional' },
 ]
 
+// ─── Stack options per sector ────────────────────────────────────────────────
+
+const STACK_OPTIONS = {
+  'it-tech': {
+    hasCategories: true,
+    categories: [
+      { id: 'web', label: 'Web & Mobile', icon: Code, pills: [
+        'ADO.NET','Agile and Scrum','Android','Angular','AngularJS','ASP.NET','ASP.NET MVC','ASP.NET Web API',
+        'AWS','Azure','C++','C#','Cosmos DB','CSS','Dependency Injection','DevOps','Django',
+        'Entity Framework','Express.js','Flutter','Git','Golang','GraphQL','HTML5','Ionic','Java',
+        'JavaScript','jQuery','Kotlin','Laravel','LINQ','MongoDB','.NET Core','Next.js','Node.js',
+        'Objective-C','OOP','PHP','PWA','Python','React','React Native','Reactive Programming',
+        'Reactive Systems','Redis','Redux','Ruby','Ruby on Rails','Rust','Spring','SQL','Swift',
+        'T-SQL','Testing','TypeScript','UX Design','Vue.js','WCF','Web Security','WebSockets','WPF','Xamarin',
+      ]},
+      { id: 'dsa', label: 'DSA', icon: Brain, pills: [
+        'Arrays','Backtracking','Big-O Notation','Binary Tree','Bit Manipulation','Blockchain',
+        'Data Structures','Divide and Conquer','Dynamic Programming','Fibonacci Sequence',
+        'Graph Theory','Greedy Algorithms','Hash Tables','Heaps and Maps','Linked Lists','Queues',
+        'Recursion','Searching Algorithms','Sorting Algorithms','Stacks','Strings',
+        'Tree Data Structure','Trie Data Structure',
+      ]},
+      { id: 'system', label: 'System Design', icon: Database, pills: [
+        'API Design','Availability and Reliability','Caching','CAP Theorem','Concurrency',
+        'Cryptography','Databases','Docker','Domain Driven Design','Kubernetes',
+        'Layering and Middleware','Load Balancing','Microservices','NoSQL',
+        'Reactive Systems','SOA','Software Architecture','XML',
+      ]},
+      { id: 'ml', label: 'ML & AI', icon: Robot, pills: [
+        'Anomaly Detection','Apache Spark','Autoencoders','Bias and Variance','ChatGPT',
+        'Classification Algorithms','Cluster Analysis','CNN','Computer Vision','Cost Function',
+        'Curse of Dimensionality','Data Analyst','Data Engineer','Data Mining','Data Processing',
+        'Data Scientist','Decision Trees','Deep Learning','Dimensionality Reduction','Ensemble Learning',
+        'Explainable AI','Feature Engineering','GANs','Genetic Algorithms','Gradient Descent','Hadoop',
+        'Julia','K-Means Clustering','K-Nearest Neighbors','Keras','LightGBM','Linear Algebra',
+        'Linear Regression','LLMOps','LLMs','Logistic Regression','MATLAB','ML Design Patterns',
+        'MLOps','Model Evaluation','Naive Bayes','Neural Networks','NLP','NumPy','Optimization',
+        'Pandas','PCA','Probability','PythonML','PyTorch','Q-Learning','R','Random Forest',
+        'Recommendation Systems','Reinforcement Learning','RNN','Scala','Scikit-Learn','SQL in ML',
+        'Statistics','Supervised Learning','SVM','TensorFlow','Time Series','Transfer Learning',
+        'Unsupervised Learning','XGBoost',
+      ]},
+      { id: 'behavioral', label: 'Behavioral', icon: UserCircle, pills: [
+        'Junior Engineering BQ','Senior Engineering BQ','Staff and Principal BQ','Engineering Management BQ',
+      ]},
+    ],
+  },
+  'government': { hasCategories: false, pills: ['History','Geography','Polity','Economy','Current Affairs','Environment','Science','Ethics'] },
+  'banking':    { hasCategories: false, pills: ['Reasoning','Quantitative','English','Banking Awareness','Computer','Current Affairs'] },
+  'engineering':{ hasCategories: false, pills: ['Mechanical','Civil','Electrical','Electronics','Chemical'] },
+  'medical':    { hasCategories: false, pills: ['Medicine','Surgery','OBG','Pediatrics','Community Medicine','Psychiatry','ENT'] },
+  'students':   { hasCategories: false, pills: ['JEE Physics','JEE Chemistry','JEE Mathematics','CET Maharashtra','Campus Placement','HR'] },
+  'business':   { hasCategories: false, pills: ['CAT VARC','CAT DILR','CAT QA','MBA Interview','Group Discussion'] },
+}
+
+const MAX_STACK = 5
+
+// Tech name aliases for resume auto-detection normalization
+const TECH_ALIASES = {
+  // Web & Mobile
+  'react.js':'React','reactjs':'React','react js':'React',
+  'angular':'Angular','angularjs':'AngularJS','angular.js':'AngularJS',
+  'vue.js':'Vue.js','vuejs':'Vue.js','vue js':'Vue.js',
+  'next.js':'Next.js','nextjs':'Next.js',
+  'node.js':'Node.js','nodejs':'Node.js','node js':'Node.js',
+  'express.js':'Express.js','expressjs':'Express.js',
+  'asp.net':'ASP.NET','asp.net mvc':'ASP.NET MVC','asp.net web api':'ASP.NET Web API',
+  'dotnet':'.NET Core','dot net':'.NET Core','.net':'.NET Core',
+  'c#':'C#','csharp':'C#',
+  'typescript':'TypeScript','ts':'TypeScript',
+  'javascript':'JavaScript','js':'JavaScript',
+  'python':'Python','django':'Django',
+  'react native':'React Native','flutter':'Flutter',
+  'android':'Android','ios':'iOS','swift':'Swift','kotlin':'Kotlin',
+  'golang':'Golang','go lang':'Golang','go ':'Golang',
+  'rust':'Rust','ruby':'Ruby','ruby on rails':'Ruby on Rails','rails':'Ruby on Rails',
+  'php':'PHP','laravel':'Laravel',
+  'java':'Java','spring':'Spring','spring boot':'Spring',
+  'graphql':'GraphQL','redis':'Redis','mongodb':'MongoDB',
+  'jquery':'jQuery','html':'HTML5','html5':'HTML5','css':'CSS',
+  'xamarin':'Xamarin','ionic':'Ionic','pwa':'PWA',
+  'redux':'Redux','webpack':'Testing','git':'Git','github':'Git',
+  'aws':'AWS','azure':'Azure','gcp':'GCP','devops':'DevOps',
+  'docker':'Docker','kubernetes':'Kubernetes','k8s':'Kubernetes',
+  'websockets':'WebSockets','web security':'Web Security',
+  // DSA
+  'arrays':'Arrays','linked list':'Linked Lists','linked lists':'Linked Lists',
+  'dynamic programming':'Dynamic Programming','dp':'Dynamic Programming',
+  'graph':'Graph Theory','tree':'Tree Data Structure','binary tree':'Binary Tree',
+  'sorting':'Sorting Algorithms','searching':'Searching Algorithms',
+  'recursion':'Recursion','backtracking':'Backtracking',
+  'hash table':'Hash Tables','hashtable':'Hash Tables','hashmap':'Hash Tables',
+  'heap':'Heaps and Maps','stack':'Stacks','queue':'Queues',
+  'big o':'Big-O Notation','time complexity':'Big-O Notation',
+  // ML & AI
+  'tensorflow':'TensorFlow','pytorch':'PyTorch','keras':'Keras',
+  'machine learning':'ML Design Patterns','deep learning':'Deep Learning',
+  'nlp':'NLP','natural language processing':'NLP',
+  'computer vision':'Computer Vision','cv':'Computer Vision',
+  'scikit':'Scikit-Learn','sklearn':'Scikit-Learn',
+  'pandas':'Pandas','numpy':'NumPy','matplotlib':'Data Processing',
+  'llm':'LLMs','llms':'LLMs','gpt':'ChatGPT','chatgpt':'ChatGPT',
+  'spark':'Apache Spark','hadoop':'Hadoop','scala':'Scala',
+  'mlops':'MLOps','data science':'Data Scientist','data analyst':'Data Analyst',
+  // System Design
+  'microservices':'Microservices','api':'API Design','rest':'API Design',
+  'sql':'SQL','nosql':'NoSQL','database':'Databases',
+  'caching':'Caching','load balancing':'Load Balancing',
+  'cap theorem':'CAP Theorem','concurrency':'Concurrency',
+}
+
 // ─── Sector ID maps (module-level so hooks can reference them) ───────────────
 const TO_DB   = { 'it-tech':'it_tech','government':'government','banking':'banking','engineering':'engineering','medical':'medical','students':'students','business':'business' }
 const FROM_DB = Object.fromEntries(Object.entries(TO_DB).map(([k,v]) => [v,k]))
@@ -212,6 +334,155 @@ function CardGrid({ items, selected, onSelect, cols = 2 }) {
   )
 }
 
+// ─── StackSelector ───────────────────────────────────────────────────────────
+
+// compact=true → used inside personalize step (scrollable pills, prominent tabs)
+// compact=false → used in standalone stack step (existing layout)
+function StackSelector({ sector, selected, onChange, activeCategory, onCategoryChange, stackSource, compact = false }) {
+  const config = STACK_OPTIONS[sector]
+  if (!config) return null
+
+  const allPills = config.hasCategories
+    ? (config.categories.find(c => c.id === activeCategory) ?? config.categories[0]).pills
+    : config.pills
+
+  const toggle = (pill) => {
+    if (selected.includes(pill)) {
+      onChange(selected.filter(p => p !== pill))
+    } else {
+      if (selected.length >= MAX_STACK) return
+      onChange([...selected, pill])
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+
+      {/* Category tabs */}
+      {config.hasCategories && (
+        compact ? (
+          /* Compact tabs — fit all 5 IT tabs without overflow */
+          <div style={{ display: 'flex', gap: 0, overflowX: 'auto', borderBottom: '1px solid #1E293B', scrollbarWidth: 'none', marginBottom: 10, flexShrink: 0 }}>
+            {config.categories.map(cat => {
+              const Ic = cat.icon
+              const active = activeCategory === cat.id
+              return (
+                <button key={cat.id} type="button" onClick={() => onCategoryChange(cat.id)}
+                  style={{
+                    padding: '7px 10px',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: active ? '2px solid #2563EB' : '2px solid transparent',
+                    marginBottom: -1,
+                    color: active ? '#F9FAFB' : '#6B7280',
+                    cursor: 'pointer',
+                    transition: 'color 150ms',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}>
+                  <Ic size={11} weight={active ? 'fill' : 'regular'} />
+                  {cat.label}
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          /* Standard tabs — pill style (unchanged for stack step) */
+          <div className="flex gap-1 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {config.categories.map(cat => {
+              const Ic = cat.icon
+              const active = activeCategory === cat.id
+              return (
+                <button key={cat.id} type="button" onClick={() => onCategoryChange(cat.id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0"
+                  style={{
+                    background: active ? 'rgba(37,99,235,0.12)' : 'transparent',
+                    color: active ? '#60A5FA' : '#6B7280',
+                    border: active ? '1px solid rgba(37,99,235,0.3)' : '1px solid transparent',
+                  }}>
+                  <Ic size={13} weight={active ? 'fill' : 'regular'} />
+                  {cat.label}
+                </button>
+              )
+            })}
+          </div>
+        )
+      )}
+
+      {/* Pills container */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: compact ? 8 : 8,
+        padding: compact ? '4px 4px 12px 4px' : 0,
+        overflowY: compact ? 'auto' : 'visible',
+        maxHeight: compact ? 'none' : 'none',
+        minHeight: 0,
+        scrollbarWidth: 'thin',
+        scrollbarColor: '#374151 #1F2937',
+        flex: compact ? '1 1 0' : 'unset',
+      }}>
+        {allPills.map(pill => {
+          const isSelected      = selected.includes(pill)
+          const isMaxed         = !isSelected && selected.length >= MAX_STACK
+          const isAutoDetected  = stackSource === 'resume' && isSelected
+          return compact ? (
+            /* Compact pill style — improved */
+            <button key={pill} type="button" onClick={() => toggle(pill)} disabled={isMaxed}
+              title={isMaxed ? `Max ${MAX_STACK} selected` : ''}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: isSelected ? 600 : 500,
+                cursor: isMaxed ? 'not-allowed' : 'pointer',
+                opacity: isMaxed ? 0.4 : 1,
+                transition: 'all 150ms',
+                background: isSelected ? 'rgba(37,99,235,0.15)' : '#1E293B',
+                border: `1px solid ${isSelected ? '#2563EB' : '#334155'}`,
+                color: isSelected ? '#2563EB' : '#94A3B8',
+              }}>
+              {isAutoDetected && <Sparkle size={10} weight="fill" color="#F59E0B" />}
+              {pill}
+            </button>
+          ) : (
+            /* Standard pill style — unchanged */
+            <button key={pill} type="button" onClick={() => toggle(pill)} disabled={isMaxed}
+              title={isMaxed ? `Max ${MAX_STACK} selected` : ''}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+              style={{
+                background: isSelected ? 'rgba(37,99,235,0.15)' : '#1F2937',
+                border: isSelected ? '1px solid #2563EB' : '1px solid #374151',
+                color: isSelected ? '#60A5FA' : '#9CA3AF',
+                opacity: isMaxed ? 0.4 : 1,
+                cursor: isMaxed ? 'not-allowed' : 'pointer',
+              }}>
+              {isAutoDetected && <Sparkle size={10} weight="fill" color="#F59E0B" />}
+              {pill}
+              {isSelected && !isAutoDetected && <CheckCircle size={11} weight="fill" color="#2563EB" />}
+            </button>
+          )
+        })}
+      </div>
+
+      {stackSource === 'resume' && selected.length > 0 && (
+        <p className="text-xs mt-3" style={{ color: '#F59E0B', flexShrink: 0 }}>
+          <Sparkle size={11} weight="fill" style={{ display:'inline', marginRight:4 }} />
+          Detected from your resume — adjust if needed
+        </p>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function InterviewSetup() {
@@ -245,9 +516,23 @@ export default function InterviewSetup() {
       }
 
       const totalQuestions = questionCount
+
+      // IT sector: derive interview type from selected stack (no manual type step)
+      const BEHAVIORAL_IT_PILLS = new Set(['Junior Engineering BQ', 'Senior Engineering BQ', 'Staff and Principal BQ', 'Engineering Management BQ'])
+      let effectiveType = interviewType
+      if (sector === 'it-tech') {
+        const hasBQ   = selectedStack.some(p => BEHAVIORAL_IT_PILLS.has(p))
+        const hasTech = selectedStack.some(p => !BEHAVIORAL_IT_PILLS.has(p))
+        effectiveType = selectedStack.length === 0 ? 'technical'
+          : hasBQ && hasTech ? 'mixed'
+          : hasBQ ? 'behavioral'
+          : 'technical'
+      }
+
       const sessionId = await createSession(
-        role, interviewType, companyFocus, resumeText || '',
-        dbSector, interviewType, state.toLowerCase(), studentProfile, totalQuestions
+        role, effectiveType, companyFocus, resumeText || '',
+        dbSector, effectiveType, state.toLowerCase(), studentProfile, totalQuestions,
+        selectedStack, stackSource
       )
       navigate(`/interview/session?id=${sessionId}`)
     } catch (err) {
@@ -256,7 +541,7 @@ export default function InterviewSetup() {
     }
   }
 
-  const [step, setStep]               = useState('sector')  // sector|role|state|education|type|profile|review
+  const [step, setStep]               = useState('sector')  // sector|role|state|education|stack|type|profile|review
   const [sector, setSector]           = useState('')
   const [pendingSector, setPendingSector] = useState('')
   const [role, setRole]               = useState('')
@@ -269,6 +554,12 @@ export default function InterviewSetup() {
   const [questionCount, setQuestionCount] = useState(5)
   const [showSwitchWarning, setShowSwitchWarning] = useState(false)
   const [savingGoalChange, setSavingGoalChange]   = useState(false)
+  // Stack selector state
+  const [selectedStack, setSelectedStack]       = useState([])
+  const [stackCategory, setStackCategory]       = useState('web')
+  const [stackSource, setStackSource]           = useState('manual') // 'manual' | 'resume' | 'skipped'
+  const [autoDetecting, setAutoDetecting]       = useState(false)
+  const [personalizationMode, setPersonalizationMode] = useState('manual') // 'resume' | 'manual'
 
   const primarySector   = userProfile?.primary_sector ?? ''       // DB format
   const primarySectorUI = FROM_DB[primarySector] ?? primarySector // UI format
@@ -296,7 +587,40 @@ export default function InterviewSetup() {
     setResumeError('')
     if (file.type !== 'application/pdf') { setResumeError('PDF files only.'); return }
     if (file.size > 5 * 1024 * 1024) { setResumeError('File must be under 5MB.'); return }
-    try { await processResume(file) } catch { /* error handled inside useResume */ }
+    try {
+      const extractedText = await processResume(file)
+      // Auto-detect tech stack from resume (non-blocking)
+      if (sector === 'it-tech' && extractedText) {
+        setAutoDetecting(true)
+        try {
+          const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          const detectUrl = isLocalDev
+            ? 'http://localhost:8888/.netlify/functions/detect-resume-stack'
+            : '/.netlify/functions/detect-resume-stack'
+          const res = await fetch(detectUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resumeText: extractedText.slice(0, 2000) }),
+          })
+          if (res.ok) {
+            const { technologies = [] } = await res.json()
+            const config = STACK_OPTIONS['it-tech']
+            const allPills = config.categories.flatMap(c => c.pills)
+            const normalized = technologies.map(t => {
+              const lower = t.toLowerCase()
+              return TECH_ALIASES[lower] || allPills.find(p => p.toLowerCase() === lower) || null
+            }).filter(Boolean)
+            const valid = [...new Set(normalized)].filter(t => allPills.includes(t)).slice(0, MAX_STACK)
+            if (valid.length > 0) {
+              setSelectedStack(valid)
+              setStackSource('resume')
+              setPersonalizationMode('resume')
+            }
+          }
+        } catch (_) { /* detection is optional — silent fail */ }
+        finally { setAutoDetecting(false) }
+      }
+    } catch { /* error handled inside useResume */ }
   }
 
   // ── Navigation helpers ──────────────────────────────────────────────────
@@ -349,13 +673,21 @@ export default function InterviewSetup() {
   }
 
   function handleRoleContinue() {
-    if (STATE_SECTORS.has(sector)) {
+    if (sector === 'it-tech') {
+      // Pre-populate stack from role defaults before showing personalize step
+      const defaults = ROLE_DEFAULT_STACK[role]
+      if (defaults) {
+        setSelectedStack(defaults.stack)
+        setStackCategory(defaults.category)
+      }
+      setPersonalizationMode(savedResume ? 'resume' : 'manual')
+      setStep('personalize')
+    } else if (STATE_SECTORS.has(sector)) {
       setStep('state')
     } else if (sector === 'students') {
       setStep('education')
     } else {
-      setInterviewType('')
-      setStep('type')
+      setStep('stack')
     }
   }
 
@@ -363,17 +695,25 @@ export default function InterviewSetup() {
     if (step === 'role') {
       setSector('')
       setStep('sector')
+    } else if (step === 'personalize') {
+      setSelectedStack([])
+      setStackSource('manual')
+      setStep('role')
     } else if (step === 'state') {
       setState('Maharashtra')
       setStep('role')
     } else if (step === 'education') {
       setEducation('')
       setStep('role')
-    } else if (step === 'type') {
-      setInterviewType('')
+    } else if (step === 'stack') {
+      setSelectedStack([])
+      setStackSource('manual')
       if (STATE_SECTORS.has(sector)) setStep('state')
       else if (sector === 'students') setStep('education')
       else setStep('role')
+    } else if (step === 'type') {
+      setInterviewType('')
+      setStep('stack')
     } else if (step === 'profile') {
       setStep('type')
     }
@@ -555,7 +895,7 @@ export default function InterviewSetup() {
           <div className="mt-8">
             <button
               type="button"
-              onClick={() => { setInterviewType(''); setStep('type') }}
+              onClick={() => setStep('stack')}
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
             >
               Continue →
@@ -594,12 +934,364 @@ export default function InterviewSetup() {
           <div className="mt-8">
             <button
               type="button"
-              onClick={() => { setInterviewType(''); setStep('type') }}
+              onClick={() => setStep('stack')}
               disabled={!education}
               className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11"
             >
               Continue →
             </button>
+          </div>
+        </div>
+      </AppLayout>
+    )
+  }
+
+  // ── Step: personalize (IT sector only — replaces stack + type + profile) ──
+
+  if (step === 'personalize') {
+    const sectorLabel = SECTORS.find(s => s.id === sector)?.title ?? ''
+    const roleLabel   = ROLES_BY_SECTOR[sector]?.find(r => r.id === role)?.label ?? ''
+    const canContinue = selectedStack.length > 0 || !!resumeText || !!savedResume
+    const resumeReady = (!!savedResume || !!resumeText) && !showUpload
+
+    // Dynamic continue button label
+    const continueBtnLabel = resumeReady && selectedStack.length === 0
+      ? 'Continue with resume →'
+      : selectedStack.length > 0
+        ? `Continue with ${selectedStack.length} topic${selectedStack.length > 1 ? 's' : ''} →`
+        : 'Continue →'
+
+    // Benefits shown in left card to fill empty space
+    const RESUME_BENEFITS = [
+      'AI reads your actual projects',
+      'Questions from your real stack',
+      'Personalized to your experience',
+      'No manual selection needed',
+    ]
+
+    // Card shared base styles
+    const cardBase = {
+      borderRadius: 16,
+      padding: 20,
+      display: 'flex',
+      flexDirection: 'column',
+      cursor: 'pointer',
+      transition: 'border-color 150ms, background 150ms',
+    }
+
+    return (
+      <AppLayout>
+        <div className="p-4 md:p-8 max-w-4xl">
+          <button type="button" onClick={handleBack} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
+          <h1 className="font-bold text-white text-2xl mt-4 mb-1">Personalize your interview</h1>
+          <p className="text-gray-500 text-sm mb-2">Help us ask the right questions</p>
+          <div className="flex items-center gap-2 mb-5">
+            <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{sectorLabel}</span>
+            <span className="text-gray-700 text-xs">›</span>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{roleLabel}</span>
+          </div>
+
+          {/* Two-card grid — side by side desktop, stacked mobile */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+
+            {/* ── Card A — Resume (blue) ── */}
+            <div
+              onClick={() => setPersonalizationMode('resume')}
+              className="md:h-[480px]"
+              style={{
+                ...cardBase,
+                background: personalizationMode === 'resume' ? 'rgba(37,99,235,0.05)' : '#111827',
+                border: personalizationMode === 'resume' ? '2px solid #2563EB' : '1px solid #1E293B',
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, background: 'rgba(37,99,235,0.12)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FileText size={22} weight="duotone" color="#2563EB" />
+                </div>
+                <div>
+                  <p style={{ color: '#F9FAFB', fontWeight: 600, fontSize: 14, margin: 0 }}>Use my resume</p>
+                  <p style={{ color: '#6B7280', fontSize: 12, margin: 0 }}>AI reads your projects &amp; actual stack</p>
+                </div>
+              </div>
+
+              {/* Resume state — grows to fill card */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                {savedResume && !showUpload ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
+                      <CheckCircle size={18} weight="fill" color="#2563EB" style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ color: '#60A5FA', fontSize: 13, fontWeight: 600, margin: 0 }}>Resume ready</p>
+                        <p style={{ color: '#6B7280', fontSize: 11, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{savedResume.filename}</p>
+                      </div>
+                    </div>
+                    <button type="button"
+                      onClick={e => { e.stopPropagation(); setShowUpload(true) }}
+                      style={{ background: 'none', border: 'none', color: '#4B5563', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', textAlign: 'left', padding: 0, width: 'fit-content' }}>
+                      Update resume
+                    </button>
+                  </>
+                ) : uploading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 0' }}>
+                    <Spinner size={22} color="border-blue-500" />
+                    <p style={{ color: '#9CA3AF', fontSize: 12, margin: 0 }}>Reading resume…</p>
+                  </div>
+                ) : resumeText && !showUpload ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
+                    <CheckCircle size={18} weight="fill" color="#2563EB" style={{ flexShrink: 0 }} />
+                    <div>
+                      <p style={{ color: '#60A5FA', fontSize: 13, fontWeight: 600, margin: 0 }}>Resume ready</p>
+                      <p style={{ color: '#6B7280', fontSize: 11, margin: 0 }}>{resumeText.length} characters extracted</p>
+                    </div>
+                  </div>
+                ) : (
+                  <label htmlFor="resume-upload-personalize"
+                    onClick={e => e.stopPropagation()}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '24px 16px', border: '2px dashed #374151', borderRadius: 12, cursor: 'pointer', transition: 'border-color 150ms' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(37,99,235,0.4)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#374151'}
+                  >
+                    <span style={{ fontSize: 28 }}>📄</span>
+                    <p style={{ color: '#E5E7EB', fontSize: 13, fontWeight: 500, margin: 0 }}>Drag &amp; drop or click to browse</p>
+                    <p style={{ color: '#4B5563', fontSize: 12, margin: 0 }}>PDF only · Max 5MB</p>
+                    <input id="resume-upload-personalize" type="file" accept=".pdf,application/pdf" style={{ display: 'none' }} onChange={handleFileSelect} />
+                  </label>
+                )}
+
+                {resumeError && <p style={{ color: '#F87171', fontSize: 12, margin: 0 }}>{resumeError}</p>}
+                {autoDetecting && (
+                  <p style={{ color: '#F59E0B', fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, margin: 0 }}>
+                    <Sparkle size={12} weight="fill" /> Detecting stack from resume…
+                  </p>
+                )}
+
+                {/* Benefits list — fills empty space */}
+                <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #1E293B' }}>
+                  {RESUME_BENEFITS.map(benefit => (
+                    <div key={benefit} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <CheckCircle size={14} weight="fill" color="#10B981" style={{ flexShrink: 0 }} />
+                      <span style={{ color: '#94A3B8', fontSize: 13 }}>{benefit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <p style={{ color: '#374151', fontSize: 12, marginTop: 12, flexShrink: 0 }}>Best for experienced candidates</p>
+            </div>
+
+            {/* ── Card B — Manual stack (gold) ── */}
+            <div
+              onClick={() => setPersonalizationMode('manual')}
+              className="md:h-[480px]"
+              style={{
+                ...cardBase,
+                background: personalizationMode === 'manual' ? 'rgba(245,158,11,0.05)' : '#111827',
+                border: personalizationMode === 'manual' ? '2px solid #F59E0B' : '1px solid #1E293B',
+              }}
+            >
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, background: 'rgba(245,158,11,0.12)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Sliders size={22} weight="duotone" color="#F59E0B" />
+                </div>
+                <div>
+                  <p style={{ color: '#F9FAFB', fontWeight: 600, fontSize: 14, margin: 0 }}>Choose my topics</p>
+                  <p style={{ color: '#6B7280', fontSize: 12, margin: 0 }}>Select technologies to practice specifically</p>
+                </div>
+              </div>
+
+              {/* Stack selector — fills card height */}
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}
+                onClick={e => e.stopPropagation()}>
+                <StackSelector
+                  sector={sector}
+                  selected={selectedStack}
+                  onChange={newStack => { setSelectedStack(newStack); if (stackSource !== 'resume') setStackSource('manual') }}
+                  activeCategory={stackCategory}
+                  onCategoryChange={setStackCategory}
+                  stackSource={stackSource}
+                  compact={true}
+                />
+              </div>
+
+              <p style={{ color: '#374151', fontSize: 12, marginTop: 12, flexShrink: 0 }}>Best for targeted practice</p>
+            </div>
+          </div>
+
+          {/* ── Selected topics summary (always shown) ── */}
+          <div style={{ marginBottom: 20, padding: '14px 16px', borderRadius: 12, background: '#111827', border: '1px solid #1E293B', minHeight: 52 }}>
+            <p style={{ color: '#64748B', fontSize: 12, marginBottom: selectedStack.length > 0 ? 10 : 0 }}>
+              {selectedStack.length > 0 ? 'Selected topics:' : ''}
+            </p>
+            {selectedStack.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {selectedStack.map(t => (
+                  <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, fontSize: 11, background: 'rgba(37,99,235,0.12)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.25)' }}>
+                    {stackSource === 'resume' && <Sparkle size={9} weight="fill" color="#F59E0B" />}
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedStack(selectedStack.filter(s => s !== t))}
+                      style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', fontSize: 12, lineHeight: 1, opacity: 0.7 }}
+                      title={`Remove ${t}`}
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#4B5563', fontSize: 12, fontStyle: 'italic', margin: 0 }}>
+                Select topics above or use your resume
+              </p>
+            )}
+          </div>
+
+          {/* ── Continue button ── */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setStep('review')}
+              disabled={!canContinue}
+              style={{
+                width: '100%',
+                maxWidth: 400,
+                height: 48,
+                background: canContinue ? '#2563EB' : '#1E293B',
+                border: 'none',
+                borderRadius: 10,
+                color: canContinue ? '#fff' : '#4B5563',
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: canContinue ? 'pointer' : 'not-allowed',
+                transition: 'background 150ms',
+              }}
+              onMouseEnter={e => { if (canContinue) e.currentTarget.style.background = '#1D4ED8' }}
+              onMouseLeave={e => { if (canContinue) e.currentTarget.style.background = '#2563EB' }}
+            >
+              {continueBtnLabel}
+            </button>
+          </div>
+
+          {!canContinue && (
+            <p style={{ textAlign: 'center', color: '#4B5563', fontSize: 12, marginTop: 8 }}>
+              Upload a resume or select at least one topic to continue
+            </p>
+          )}
+        </div>
+      </AppLayout>
+    )
+  }
+
+  // ── Step: stack ────────────────────────────────────────────────────────
+
+  if (step === 'stack') {
+    const sectorLabel = SECTORS.find(s => s.id === sector)?.title ?? ''
+    const roleLabel   = ROLES_BY_SECTOR[sector]?.find(r => r.id === role)?.label ?? ''
+    const stackConfig = STACK_OPTIONS[sector]
+    const SECTOR_STACK_LABELS = {
+      'it-tech': 'Which technologies do you want to be interviewed on?',
+      'government': 'Which subjects do you want to focus on?',
+      'banking': 'Which sections do you want to practice?',
+      'engineering': 'Which engineering stream are you from?',
+      'medical': 'Which specialty do you want to practice?',
+      'students': 'Which exam topics do you want to cover?',
+      'business': 'Which areas do you want to focus on?',
+    }
+
+    return (
+      <AppLayout>
+        <div className="p-4 md:p-8 max-w-6xl">
+          <button type="button" onClick={handleBack} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
+          <h1 className="font-bold text-white text-2xl mt-4 mb-1">Set Up Your Interview</h1>
+          <div className="flex items-center gap-2 mb-6">
+            <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{sectorLabel}</span>
+            <span className="text-gray-700 text-xs">›</span>
+            <span className="text-xs bg-gray-800 text-gray-400 px-2.5 py-1 rounded-full border border-gray-700">{roleLabel}</span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-7">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-gray-300 text-sm font-medium">{SECTOR_STACK_LABELS[sector] ?? 'Select your focus areas'}</p>
+                {selectedStack.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full font-mono"
+                    style={{ background: 'rgba(37,99,235,0.15)', color: '#60A5FA', border: '1px solid rgba(37,99,235,0.3)' }}>
+                    {selectedStack.length} of {MAX_STACK} selected
+                  </span>
+                )}
+              </div>
+
+              {autoDetecting && (
+                <p className="text-xs text-amber-400 mb-3 flex items-center gap-1">
+                  <Sparkle size={12} weight="fill" /> Detecting technologies from your resume…
+                </p>
+              )}
+
+              {stackConfig ? (
+                <StackSelector
+                  sector={sector}
+                  selected={selectedStack}
+                  onChange={setSelectedStack}
+                  activeCategory={stackCategory}
+                  onCategoryChange={setStackCategory}
+                  stackSource={stackSource}
+                />
+              ) : (
+                <p className="text-gray-500 text-sm">No specific options for this sector.</p>
+              )}
+
+              {selectedStack.length === 0 && !autoDetecting && (
+                <p className="text-xs text-gray-600 mt-3">Select at least one to focus your interview, or skip for general questions.</p>
+              )}
+
+              <div className="mt-8 space-y-3">
+                <button type="button"
+                  onClick={() => { setInterviewType(''); setStep('type') }}
+                  disabled={selectedStack.length === 0}
+                  className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg text-sm transition-colors min-h-11">
+                  Continue →
+                </button>
+                <button type="button"
+                  onClick={() => { setSelectedStack([]); setStackSource('skipped'); setInterviewType(''); setStep('type') }}
+                  className="w-full text-center text-xs text-gray-600 hover:text-gray-400 transition-colors py-1">
+                  Skip — use general questions
+                </button>
+              </div>
+            </div>
+
+            <div className="hidden lg:block lg:col-span-5">
+              <div style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 16, padding: 24 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#F9FAFB', marginBottom: 4 }}>Why this matters</p>
+                <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 20 }}>Questions are generated specifically for your stack</p>
+                <div className="space-y-4">
+                  {[
+                    { emoji: '🎯', title: 'Laser-focused questions', desc: 'Every question will be about the technologies you actually use. No irrelevant Angular questions if you picked React.' },
+                    { emoji: '📊', title: 'Stack performance report', desc: 'After the interview, see your score broken down per technology.' },
+                    { emoji: '✨', title: 'Resume auto-detection', desc: 'Upload your resume and we detect your stack automatically.' },
+                  ].map(item => (
+                    <div key={item.emoji} className="flex items-start gap-3">
+                      <span style={{ fontSize: 20, flexShrink: 0 }}>{item.emoji}</span>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#F9FAFB', margin: '0 0 2px' }}>{item.title}</p>
+                        <p style={{ fontSize: 12, color: '#6B7280', margin: 0, lineHeight: 1.5 }}>{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedStack.length > 0 && (
+                  <div className="mt-5 pt-4" style={{ borderTop: '1px solid #1E293B' }}>
+                    <p style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>Your interview will focus on:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedStack.map(t => (
+                        <span key={t} className="text-xs px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(37,99,235,0.12)', color: '#60A5FA', border: '1px solid rgba(37,99,235,0.25)' }}>{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -833,20 +1525,30 @@ export default function InterviewSetup() {
     const eduLabel    = EDUCATION_LEVELS.find(e => e.id === education)?.label ?? ''
     const Q_LABELS    = { 5: 'Quick practice', 10: 'Standard session', 15: 'Extended practice', 20: 'Deep preparation', 30: 'Full mock test' }
     const qLabel      = isPro ? `${questionCount} questions` : '5 questions (Free plan)'
+    const backStep    = sector === 'it-tech' ? 'personalize' : 'profile'
 
-    const rows = [
-      { label: 'Sector',    value: sectorLabel },
-      { label: 'Role',      value: roleLabel },
-      STATE_SECTORS.has(sector) ? { label: 'State', value: state } : null,
-      education ? { label: 'Education', value: eduLabel } : null,
-      { label: 'Round',     value: typeLabel },
-      { label: 'Questions', value: qLabel, color: isPro ? '#2563EB' : '#F59E0B' },
-    ].filter(Boolean)
+    const rows = sector === 'it-tech'
+      ? [
+          { label: 'Sector',    value: sectorLabel },
+          { label: 'Role',      value: roleLabel },
+          selectedStack.length > 0 ? { label: 'Focus', value: selectedStack.join(' · '), color: '#60A5FA' } : null,
+          { label: 'Source',    value: stackSource === 'resume' ? 'From resume' : 'Manual selection', color: stackSource === 'resume' ? '#F59E0B' : '#94A3B8' },
+          { label: 'Questions', value: qLabel, color: isPro ? '#2563EB' : '#F59E0B' },
+        ].filter(Boolean)
+      : [
+          { label: 'Sector',    value: sectorLabel },
+          { label: 'Role',      value: roleLabel },
+          STATE_SECTORS.has(sector) ? { label: 'State', value: state } : null,
+          education ? { label: 'Education', value: eduLabel } : null,
+          selectedStack.length > 0 ? { label: 'Focus', value: selectedStack.join(' · '), color: '#60A5FA' } : null,
+          { label: 'Round',     value: typeLabel },
+          { label: 'Questions', value: qLabel, color: isPro ? '#2563EB' : '#F59E0B' },
+        ].filter(Boolean)
 
     return (
       <AppLayout>
         <div className="p-4 md:p-8 max-w-6xl">
-          <button type="button" onClick={() => setStep('profile')} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
+          <button type="button" onClick={() => setStep(backStep)} className="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Back</button>
           <h1 className="font-bold text-white text-xl mt-4 mb-1">Ready to start?</h1>
           <p className="text-sm text-gray-400 mb-6">Review your interview setup</p>
 
@@ -933,7 +1635,7 @@ export default function InterviewSetup() {
                 )}
               </button>
 
-              <button type="button" onClick={() => setStep('profile')} className="block w-full text-center text-gray-500 hover:text-gray-300 text-sm transition-colors mt-3">
+              <button type="button" onClick={() => setStep(backStep)} className="block w-full text-center text-gray-500 hover:text-gray-300 text-sm transition-colors mt-3">
                 Change something
               </button>
             </div>

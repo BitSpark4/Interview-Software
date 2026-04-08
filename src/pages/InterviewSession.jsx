@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Clock, XCircle, PaperPlaneTilt, CheckCircle, Warning,
-  Lightbulb, Brain, CircleNotch, Microphone,
+  Lightbulb, Brain, CircleNotch, Microphone, Flag,
 } from '@phosphor-icons/react'
 import { useInterview } from '../hooks/useInterview'
 import useSpeechToText from '../hooks/useSpeechToText'
 import { useAuth } from '../hooks/useAuth'
-import { saveAskedQuestion, generateAllQuestions } from '../lib/claudeApi'
+import { saveAskedQuestion, generateAllQuestions, getPreviousQuestions } from '../lib/claudeApi'
 import { ConfettiAnimation, MicAnimation } from '../components/LottieAnimation'
 import { supabase } from '../lib/supabase'
 import Spinner from '../components/Spinner'
@@ -15,6 +15,7 @@ import StarBreakdown from '../components/StarBreakdown'
 import ProFeatureWrapper from '../components/ProFeatureWrapper'
 import { validators } from '../utils/validators'
 import { scoreColor } from '../utils/scoreHelpers'
+import { cleanQuestionText } from '../utils/textHelpers'
 
 function useTimer(paused = false) {
   const [elapsed, setElapsed] = useState(0)
@@ -206,6 +207,10 @@ export default function InterviewSession() {
   const [preloadError, setPreloadError]           = useState(null)
   const [currentTip, setCurrentTip]               = useState(null)
   const [loadingTip, setLoadingTip]               = useState('Analyzing your response...')
+  const [reportOpen, setReportOpen]               = useState(false)
+  const [reportReason, setReportReason]           = useState('')
+  const [reportSubmitting, setReportSubmitting]   = useState(false)
+  const [reportToast, setReportToast]             = useState(false)
   const timer = useTimer(false)   // always count — don't pause during AI calls
   const textareaRef = useAutoResize(input)
 
@@ -228,7 +233,8 @@ export default function InterviewSession() {
       try {
         setIsPreloading(true)
         const { data: { user } } = await supabase.auth.getUser()
-        const prevQs = JSON.parse(sessionStorage.getItem(`pq_${sessionData.sector}`) || '[]')
+        // Fetch previous questions from DB so repeats are excluded across sessions
+        const prevQs = await getPreviousQuestions(user?.id, sessionData.sector)
         const questions = await generateAllQuestions({
           sector: sessionData.sector,
           role: sessionData.role,
@@ -238,6 +244,7 @@ export default function InterviewSession() {
           state: sessionData.state || 'maharashtra',
           userProfile: userProfile || {},
           previousQuestions: prevQs,
+          selectedStack: sessionData.selectedStack || [],
         })
         setAllQuestions(questions)
         setCurrentTip(questions[0]?.tip || null)
@@ -285,13 +292,22 @@ export default function InterviewSession() {
 
   const currentQuestion = [...messages].reverse().find(m => m.is_question)
 
-  const cleanQuestionText = (text) => {
-    if (!text) return ''
-    return text
-      .replace(/^Question\s+\d+\s+of\s+\d+\s*:\s*/i, '')
-      .replace(/^Q\d+\s*:\s*/i, '')
-      .replace(/^Question\s+\d+\s*:\s*/i, '')
-      .trim()
+  async function handleReport() {
+    if (!reportReason || reportSubmitting) return
+    setReportSubmitting(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('question_reports').insert({
+        session_id:    sessionId,
+        user_id:       user?.id,
+        report_reason: reportReason,
+      })
+      setReportOpen(false)
+      setReportReason('')
+      setReportToast(true)
+      setTimeout(() => setReportToast(false), 3000)
+    } catch (_) { /* silent fail — non-critical */ }
+    finally { setReportSubmitting(false) }
   }
 
   async function handleSubmit(e) {
@@ -405,17 +421,36 @@ export default function InterviewSession() {
 
       {showConfetti && <ConfettiAnimation onComplete={() => setShowConfetti(false)} />}
 
+      {/* Report success toast */}
+      {reportToast && (
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-sm font-medium"
+          style={{ background: '#052E16', border: '1px solid #166534', color: '#4ADE80' }}>
+          <CheckCircle size={16} weight="fill" />
+          Thank you — we will review this question.
+        </div>
+      )}
+
       {/* ── Top bar ──────────────────────────────────────────── */}
       <header
         className="shrink-0 flex items-center justify-between px-4 md:px-6 z-10"
         style={{ height: 56, background: '#0F172A', borderBottom: '1px solid #1a2235' }}
       >
         {/* Session label */}
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-          <span className="text-xs font-mono text-gray-400 capitalize truncate max-w-[140px] sm:max-w-none">
-            {roleLabel} · <span className="text-gray-500">{typeLabel}</span>
-          </span>
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-xs font-mono text-gray-400 capitalize truncate max-w-[140px] sm:max-w-none">
+              {roleLabel} · <span className="text-gray-500">{typeLabel}</span>
+            </span>
+          </div>
+          {sessionData?.selectedStack?.length > 0 && (
+            <div className="flex gap-1 flex-wrap pl-3.5">
+              {sessionData.selectedStack.map(t => (
+                <span key={t} className="text-[9px] font-mono px-1.5 py-0.5 rounded-full"
+                  style={{ background: '#1E293B', color: '#64748B', border: '1px solid #1E293B' }}>{t}</span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -527,6 +562,44 @@ export default function InterviewSession() {
                   <p className="text-gray-100 whitespace-pre-wrap leading-relaxed font-medium" style={{ fontSize: 17 }}>
                     {cleanQuestionText(preloadedQuestion)}
                   </p>
+
+                  {/* Flag / Report button */}
+                  <div className="relative mt-3">
+                    <button type="button" onClick={() => setReportOpen(o => !o)}
+                      className="flex items-center gap-1 transition-colors group"
+                      title="Report this question">
+                      <Flag size={13} weight="regular"
+                        className="transition-colors group-hover:text-amber-400"
+                        style={{ color: '#374151' }} />
+                      <span className="text-[10px] transition-colors group-hover:text-amber-400" style={{ color: '#374151' }}>Report</span>
+                    </button>
+
+                    {reportOpen && (
+                      <div className="absolute left-0 top-6 z-20 rounded-xl p-4 w-64 shadow-2xl"
+                        style={{ background: '#111827', border: '1px solid #1E293B' }}>
+                        <p className="text-xs font-semibold text-white mb-3">Report this question</p>
+                        <div className="space-y-2 mb-3">
+                          {['Wrong information','Question repeated','Not relevant to my role','Technical error in question'].map(reason => (
+                            <label key={reason} className="flex items-center gap-2 cursor-pointer">
+                              <input type="radio" name="report_reason" value={reason}
+                                checked={reportReason === reason}
+                                onChange={e => setReportReason(e.target.value)}
+                                className="accent-blue-500" />
+                              <span className="text-xs text-gray-300">{reason}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={handleReport} disabled={!reportReason || reportSubmitting}
+                            className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                            {reportSubmitting ? 'Sending…' : 'Submit'}
+                          </button>
+                          <button type="button" onClick={() => { setReportOpen(false); setReportReason('') }}
+                            className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               ) : (
                 // Fallback — should not happen with preloading

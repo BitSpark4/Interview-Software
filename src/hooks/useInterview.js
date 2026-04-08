@@ -65,7 +65,7 @@ export function useInterview() {
 
   // ── createSession ────────────────────────────────────────────
   // Only creates the DB row — Claude call happens in loadSession
-  async function createSession(role, interviewType, companyFocus, resumeText, sector, examType, state, studentProfile, totalQuestions = 10) {
+  async function createSession(role, interviewType, companyFocus, resumeText, sector, examType, state, studentProfile, totalQuestions = 10, selectedStack = [], stackSource = 'manual') {
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
     if (authErr || !user) throw new Error('Not signed in. Please log in and try again.')
 
@@ -81,7 +81,7 @@ export function useInterview() {
     }
     // ─────────────────────────────────────────────────────────────
 
-    const config = { role, interviewType, companyFocus, resumeText: resumeText || '', sector: sector || 'it_tech', examType: examType || 'general', state: state || 'maharashtra', studentProfile: studentProfile || null, totalQuestions }
+    const config = { role, interviewType, companyFocus, resumeText: resumeText || '', sector: sector || 'it_tech', examType: examType || 'general', state: state || 'maharashtra', studentProfile: studentProfile || null, totalQuestions, selectedStack, stackSource }
 
     const { data: session, error } = await supabase
       .from('sessions')
@@ -94,6 +94,8 @@ export function useInterview() {
         sector: sector || 'it_tech',
         exam_type: examType || 'general',
         question_count: totalQuestions,
+        selected_stack: selectedStack,
+        stack_source: stackSource,
       })
       .select()
       .single()
@@ -217,12 +219,9 @@ export function useInterview() {
       content: answerText,
     })
 
-    // 3. Evaluate with Claude
+    // 3. Evaluate with Claude — stateless: only question + answer sent
     const feedback = await evaluateAnswer({
-      conversationHistory: claudeHistory,
       userAnswer: answerText,
-      questionNumber: currentQ,
-      totalQuestions: sessionData.totalQuestions || 10,
       questionText,
     })
 
@@ -331,6 +330,26 @@ export function useInterview() {
         }).eq('id', user.id)
       }
 
+      // ── Referral reward: trigger after first completed session ────────────
+      if ((profile?.interviews_used || 0) === 0) {
+        try {
+          const { data: freshProfile } = await supabase.from('users').select('referred_by').eq('id', user.id).single()
+          if (freshProfile?.referred_by) {
+            const { data: referrer } = await supabase.from('users').select('id, referral_count, free_months_earned').eq('referral_code', freshProfile.referred_by).maybeSingle()
+            if (referrer && referrer.id !== user.id) {
+              const { data: existing } = await supabase.from('referral_rewards').select('id').eq('referrer_id', referrer.id).eq('referred_user_id', user.id).maybeSingle()
+              if (!existing) {
+                await supabase.from('referral_rewards').insert({ referrer_id: referrer.id, referred_user_id: user.id, months_added: 1 })
+                await supabase.from('users').update({
+                  referral_count: (referrer.referral_count || 0) + 1,
+                  free_months_earned: (referrer.free_months_earned || 0) + 1,
+                }).eq('id', referrer.id)
+              }
+            }
+          }
+        } catch (_) { /* reward is non-critical — never block session completion */ }
+      }
+
       // Upsert weak areas — single query instead of N+1 loop
       if (report.weak_areas?.length) {
         await supabase.from('weak_areas').upsert(
@@ -342,6 +361,16 @@ export function useInterview() {
           })),
           { onConflict: 'user_id,area', ignoreDuplicates: false }
         )
+      }
+
+      // ── Upgrade nudge: fire after free user's 2nd session (async) ────────
+      if (profile && profile.plan !== 'pro' && (profile.interviews_used || 0) === 1) {
+        const { data: { session: authSession } } = await supabase.auth.getSession()
+        fetch('/.netlify/functions/send-upgrade-nudge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id, userEmail: user.email, userName: profile?.name }),
+        }).catch(() => {}) // non-blocking, fire-and-forget
       }
 
       sessionStorage.removeItem(`ch_${sessionId}`)

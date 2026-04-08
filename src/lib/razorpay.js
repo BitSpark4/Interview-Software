@@ -92,13 +92,10 @@ export async function runPayment({ userId, userEmail }) {
             const vData = await safeJson(vRes)
             if (!vRes.ok) throw new Error(vData?.error || 'Verification failed')
           } else {
-            // Dev/test fallback: Razorpay called the handler so payment succeeded —
-            // update plan directly via Supabase client (test mode only)
-            const { error } = await supabase
-              .from('users')
-              .update({ plan: 'pro' })
-              .eq('id', userId)
-            if (error) throw new Error(error.message)
+            // Dev mode: server order failed, no signature to verify.
+            // Log a warning — do NOT update plan client-side in any environment.
+            console.warn('[DEV] Payment completed in direct mode — plan not updated. Run netlify dev for full flow.')
+            throw new Error('Please run netlify dev to test the full payment flow.')
           }
           resolve()
         } catch (err) { reject(err) }

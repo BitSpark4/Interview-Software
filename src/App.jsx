@@ -27,7 +27,10 @@ const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsOfService= lazy(() => import('./pages/TermsOfService'))
 const RefundPolicy  = lazy(() => import('./pages/RefundPolicy'))
 const ContactUs     = lazy(() => import('./pages/ContactUs'))
-const Settings      = lazy(() => import('./pages/Settings'))
+const Settings          = lazy(() => import('./pages/Settings'))
+const ReferralRedirect  = lazy(() => import('./pages/ReferralRedirect'))
+const Unsubscribe       = lazy(() => import('./pages/Unsubscribe'))
+const EmailCampaigns    = lazy(() => import('./pages/EmailCampaigns'))
 
 // Resets ErrorBoundary on every route change so a crash on one page
 // doesn't permanently block navigation to other pages.
@@ -106,6 +109,7 @@ export default function App() {
                   <Route path="/profile"           element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
                   <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+                  <Route path="/admin/emails" element={<AdminRoute><EmailCampaigns /></AdminRoute>} />
 
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -113,6 +117,8 @@ export default function App() {
                   <Route path="/refund"  element={<RefundPolicy />} />
                   <Route path="/contact" element={<ContactUs />} />
 
+                  <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
+                  <Route path="/unsubscribe" element={<Unsubscribe />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>

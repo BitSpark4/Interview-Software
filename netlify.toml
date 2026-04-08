@@ -6,6 +6,13 @@
   directory    = "netlify/functions"
   node_bundler = "esbuild"
 
+# Scheduled functions
+[functions."send-streak-reminders"]
+  schedule = "30 13 * * *"   # 7 PM IST = 1:30 PM UTC
+
+[functions."send-reengagement"]
+  schedule = "30 4 * * *"    # 10 AM IST = 4:30 AM UTC
+
 # SPA fallback
 [[redirects]]
   from   = "/*"

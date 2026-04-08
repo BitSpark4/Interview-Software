@@ -47,6 +47,67 @@ function getResource(topic) {
   return key ? TOPIC_RESOURCES[key] : null
 }
 
+function StackPerformance({ selectedStack, pairs }) {
+  if (!selectedStack?.length || !pairs?.length) return null
+
+  // Map each tech to questions by matching topic keyword
+  const techScores = selectedStack.map(tech => {
+    const related = pairs.filter(p => {
+      const topic = (p.feedback?.topic || '').toLowerCase()
+      return topic.includes(tech.toLowerCase()) || tech.toLowerCase().includes(topic.split(' ')[0])
+    })
+    const scores  = related.map(p => p.feedback?.score).filter(s => typeof s === 'number')
+    const avg     = scores.length ? Math.round((scores.reduce((a,b)=>a+b,0)/scores.length)*10)/10 : null
+    return { tech, avg, count: scores.length }
+  }).filter(t => t.avg !== null)
+
+  if (!techScores.length) return null
+
+  const strongest = [...techScores].sort((a,b) => b.avg - a.avg)[0]
+  const weakest   = [...techScores].sort((a,b) => a.avg - b.avg)[0]
+
+  const barColor = (avg) => {
+    if (avg >= 7.5) return '#22C55E'
+    if (avg >= 6)   return '#3B82F6'
+    if (avg >= 4.5) return '#F59E0B'
+    return '#EF4444'
+  }
+
+  return (
+    <div className="rounded-2xl p-5 mb-6" style={{ background: '#0D1117', border: '1px solid #1E293B' }}>
+      <p className="text-white font-bold text-base mb-4">Your Stack Performance</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        {techScores.map(({ tech, avg, count }) => (
+          <div key={tech} className="rounded-xl p-3" style={{ background: '#111827', border: '1px solid #1E293B' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-white">{tech}</span>
+              <span className="text-xs font-mono" style={{ color: barColor(avg) }}>{avg}/10</span>
+            </div>
+            <div className="w-full rounded-full overflow-hidden" style={{ height: 4, background: '#1E293B' }}>
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${(avg / 10) * 100}%`, background: barColor(avg) }} />
+            </div>
+            <p className="text-[10px] text-gray-600 mt-1">{count} question{count !== 1 ? 's' : ''}</p>
+          </div>
+        ))}
+      </div>
+      {strongest && weakest && strongest.tech !== weakest.tech && (
+        <div className="rounded-xl p-3 space-y-1" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
+          <p className="text-xs text-gray-400">
+            <span className="text-green-400 font-medium">Strongest:</span> {strongest.tech} — {strongest.avg}/10
+          </p>
+          <p className="text-xs text-gray-400">
+            <span className="text-red-400 font-medium">Weakest:</span> {weakest.tech} — {weakest.avg}/10
+          </p>
+          <p className="text-xs text-blue-400 font-medium mt-1">
+            Recommendation: Focus on {weakest.tech} this week.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PreparationRoadmap({ pairs, overallScore }) {
   const weakPairs = pairs.filter(p => (p.feedback?.score ?? 10) < 6 && (p.feedback?.topic || p.feedback?.feedback?.topic))
   const seen = new Set()
@@ -144,7 +205,7 @@ export default function Report() {
         ] = await Promise.all([
           supabase.auth.getUser(),
           supabase.from('sessions')
-            .select('id, user_id, role, interview_type, total_score, verdict, strengths, improvements, top_advice, completed, completed_at, created_at')
+            .select('id, user_id, role, interview_type, total_score, verdict, strengths, improvements, top_advice, completed, completed_at, created_at, selected_stack, stack_source')
             .eq('id', id).single(),
           supabase.from('messages')
             .select('id, session_id, sender, content, score, feedback, correct_answer, topic, is_question, question_num, created_at')
@@ -502,6 +563,7 @@ export default function Report() {
           description="Get direct links to official sources to study your weak areas"
           compact={false}
         >
+          <StackPerformance selectedStack={session.selected_stack} pairs={pairs} />
           <PreparationRoadmap pairs={pairs} overallScore={session.total_score} />
         </ProFeatureWrapper>
 

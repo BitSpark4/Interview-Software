@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ShieldStar, Users, Crown, UserCircle, Target, ChartLineUp,
   ChartBar, ArrowCounterClockwise, CheckCircle,
@@ -27,7 +27,6 @@ function scoreColor(v) {
 }
 
 function getLastActive(lastActiveAt, lastLoginAt) {
-  console.log('last_active_at:', lastActiveAt, '| last_login_at:', lastLoginAt)
   // Use last_active_at first, fall back to last_login_at for users who joined before tracking
   const ts = lastActiveAt || lastLoginAt
   if (!ts) return { label: 'Never', color: '#EF4444' }
@@ -74,6 +73,7 @@ function SkeletonCard() {
 }
 
 export default function Admin() {
+  const navigate = useNavigate()
   const [data, setData]         = useState(null)
   const [loading, setLoading]   = useState(true)
   const [fetchError, setFetchError] = useState(null)
@@ -95,6 +95,17 @@ export default function Admin() {
   const [emailSubject, setEmailSubject]           = useState('')
   const [emailBody, setEmailBody]                 = useState('')
   const [emailSending, setEmailSending]           = useState(false)
+  // ── Error Monitoring state ──────────────────────────────────────────────────
+  const [errorLogs, setErrorLogs]         = useState([])
+  const [errorCounts, setErrorCounts]     = useState({})
+  const [errorLoading, setErrorLoading]   = useState(false)
+  const [dismissedAlert, setDismissedAlert] = useState(false)
+  const [resolvingId, setResolvingId]     = useState(null)
+  // ── Analytics Tab state ────────────────────────────────────────────────────
+  const [activeTab, setActiveTab]         = useState('overview')
+  const [analyticsData, setAnalyticsData] = useState(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsCachedAt, setAnalyticsCachedAt] = useState(null)
 
   const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
@@ -129,6 +140,61 @@ export default function Admin() {
     const interval = setInterval(fetchStats, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchStats])
+
+  // ── Error Monitoring fetch ─────────────────────────────────────────────────
+  const fetchErrorLogs = useCallback(async () => {
+    setErrorLoading(true)
+    try {
+      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const [countsRes, recentRes] = await Promise.all([
+        supabase.from('error_logs').select('error_type').gte('created_at', since24h),
+        supabase.from('error_logs').select('id,error_type,error_message,created_at,is_resolved,sector').order('created_at', { ascending: false }).limit(10),
+      ])
+      // Count by type
+      const counts = {}
+      ;(countsRes.data || []).forEach(r => { counts[r.error_type] = (counts[r.error_type] || 0) + 1 })
+      setErrorCounts(counts)
+      setErrorLogs(recentRes.data || [])
+    } catch (_) {}
+    finally { setErrorLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchErrorLogs() }, [fetchErrorLogs])
+
+  const resolveError = async (id) => {
+    setResolvingId(id)
+    try {
+      await supabase.from('error_logs').update({ is_resolved: true }).eq('id', id)
+      setErrorLogs(prev => prev.map(e => e.id === id ? { ...e, is_resolved: true } : e))
+    } catch (_) {}
+    finally { setResolvingId(null) }
+  }
+
+  // ── Analytics fetch (lazy — only when tab opened or refreshed) ───────────
+  const fetchAnalytics = useCallback(async (force = false) => {
+    const CACHE_MS = 15 * 60 * 1000 // 15 minutes
+    if (!force && analyticsCachedAt && Date.now() - analyticsCachedAt < CACHE_MS) return
+    setAnalyticsLoading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const fnUrl = isLocalDev
+        ? 'http://localhost:8888/.netlify/functions/admin-analytics'
+        : '/.netlify/functions/admin-analytics'
+      const res = await fetch(fnUrl, { headers: { Authorization: `Bearer ${session?.access_token}` } })
+      if (!res.ok) throw new Error(`${res.status}`)
+      const json = await res.json()
+      setAnalyticsData(json)
+      setAnalyticsCachedAt(Date.now())
+    } catch (err) {
+      console.error('fetchAnalytics failed:', err)
+    } finally {
+      setAnalyticsLoading(false)
+    }
+  }, [isLocalDev, analyticsCachedAt])
+
+  useEffect(() => {
+    if (activeTab === 'analytics') fetchAnalytics()
+  }, [activeTab]) // eslint-disable-line
 
   // ── User Management fetch ──────────────────────────────────────────────────
   const fetchAllUsers = useCallback(async () => {
@@ -358,6 +424,21 @@ export default function Admin() {
           </div>
         )}
 
+        {/* Tab switcher */}
+        <div className="flex gap-2" style={{ marginBottom: 24 }}>
+          {[{ id: 'overview', label: 'Overview' }, { id: 'analytics', label: 'Analytics' }, { id: 'emails', label: '✉ Email Campaigns', href: '/admin/emails' }].map(tab => (
+            <button key={tab.id} onClick={() => tab.href ? navigate(tab.href) : setActiveTab(tab.id)} style={{
+              fontSize: 13, fontWeight: 600, padding: '7px 18px', borderRadius: 8, cursor: 'pointer', transition: 'all 150ms',
+              background: activeTab === tab.id ? '#2563EB' : '#1F2937',
+              color: activeTab === tab.id ? '#fff' : '#9CA3AF',
+              border: `1px solid ${activeTab === tab.id ? '#2563EB' : '#374151'}`,
+            }}>{tab.label}</button>
+          ))}
+        </div>
+
+        {/* ═══ OVERVIEW TAB ════════════════════════════════════════════════ */}
+        {activeTab === 'overview' && <>
+
         {/* Row 1 — 6 stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4" style={{ marginBottom: 24 }}>
           {loading && !data ? (
@@ -491,6 +572,79 @@ export default function Admin() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ═══ ERROR MONITORING SECTION ══════════════════════════════════ */}
+        {/* Critical alert banner */}
+        {!dismissedAlert && (errorCounts['claude_error'] || 0) > 10 && (
+          <div className="flex items-center justify-between" style={{ background: '#7F1D1D', border: '1px solid #EF4444', borderRadius: 10, padding: '10px 16px', marginTop: 16 }}>
+            <span style={{ fontSize: 13, color: '#FEE2E2', fontWeight: 600 }}>High error rate detected in the last hour — claude_error count above threshold</span>
+            <button onClick={() => setDismissedAlert(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FCA5A5' }}><X size={16} /></button>
+          </div>
+        )}
+
+        <div style={{ ...CARD, marginTop: 16, padding: 24 }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', margin: '0 0 2px 0' }}>Error Monitoring</p>
+              <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Last 24 hours — AI errors and failures</p>
+            </div>
+            <button onClick={fetchErrorLogs} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1F2937', border: '1px solid #374151', borderRadius: 8, padding: '6px 12px', color: '#9CA3AF', fontSize: 12, cursor: 'pointer' }}>
+              <ArrowCounterClockwise size={13} />Refresh
+            </button>
+          </div>
+
+          {/* Error count pills */}
+          <div className="flex flex-wrap gap-3" style={{ marginBottom: 20 }}>
+            {[
+              { key: 'claude_error', label: 'Claude API', color: '#EF4444' },
+              { key: 'token_limit',  label: 'Token Limit', color: '#F59E0B' },
+              { key: 'parse_error',  label: 'Parse Failures', color: '#8B5CF6' },
+              { key: 'rate_limit',   label: 'Rate Limit Hits', color: '#3B82F6' },
+              { key: 'timeout',      label: 'Timeouts', color: '#6B7280' },
+            ].map(({ key, label, color }) => (
+              <div key={key} style={{ background: '#1F2937', border: `1px solid ${errorCounts[key] ? color : '#374151'}`, borderRadius: 8, padding: '8px 14px', textAlign: 'center' }}>
+                <p style={{ fontSize: 22, fontWeight: 700, color: errorCounts[key] ? color : '#4B5563', margin: 0 }}>{errorCounts[key] || 0}</p>
+                <p style={{ fontSize: 11, color: '#6B7280', margin: 0 }}>{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent errors list */}
+          {errorLoading ? (
+            <div className="flex justify-center" style={{ padding: 20 }}><Spinner size={16} color="border-blue-500" /></div>
+          ) : errorLogs.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#6B7280', textAlign: 'center', padding: '16px 0' }}>No errors logged in last 24 hours</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {errorLogs.map(log => (
+                <div key={log.id} className="flex items-start justify-between gap-3" style={{
+                  background: !log.is_resolved ? 'rgba(239,68,68,0.05)' : '#111827',
+                  border: `1px solid ${!log.is_resolved ? 'rgba(239,68,68,0.2)' : '#1F2937'}`,
+                  borderRadius: 8, padding: '10px 14px',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex items-center gap-2" style={{ marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#F59E0B', background: 'rgba(245,158,11,0.12)', borderRadius: 4, padding: '1px 6px' }}>{log.error_type}</span>
+                      {log.sector && <span style={{ fontSize: 11, color: '#6B7280' }}>{log.sector}</span>}
+                      <span style={{ fontSize: 11, color: '#4B5563', marginLeft: 'auto' }}>{new Date(log.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: '#9CA3AF', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.error_message}</p>
+                  </div>
+                  {!log.is_resolved && (
+                    <button
+                      onClick={() => resolveError(log.id)}
+                      disabled={resolvingId === log.id}
+                      style={{ fontSize: 11, color: '#22C55E', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                    >
+                      {resolvingId === log.id ? '...' : 'Resolve'}
+                    </button>
+                  )}
+                  {log.is_resolved && <span style={{ fontSize: 11, color: '#4B5563' }}>Resolved</span>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ═══ USER MANAGEMENT SECTION ═══════════════════════════════════ */}
@@ -780,6 +934,108 @@ export default function Admin() {
           )}
         </div>
         {/* ═══ END USER MANAGEMENT ════════════════════════════════════════════ */}
+
+        </> /* end overview tab */}
+
+        {/* ═══ ANALYTICS TAB ═══════════════════════════════════════════════ */}
+        {activeTab === 'analytics' && (
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 15, fontWeight: 600, color: '#F9FAFB', margin: 0 }}>Business Analytics</p>
+              <button onClick={() => fetchAnalytics(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1F2937', border: '1px solid #374151', borderRadius: 8, padding: '6px 12px', color: '#9CA3AF', fontSize: 12, cursor: 'pointer' }}>
+                <ArrowCounterClockwise size={13} className={analyticsLoading ? 'animate-spin' : ''} />Refresh
+              </button>
+            </div>
+            {analyticsLoading && !analyticsData ? (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" style={{ marginBottom: 24 }}>
+                {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : analyticsData ? (<>
+              {/* Row 1 — Revenue cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" style={{ marginBottom: 24 }}>
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>Monthly Revenue (MRR)</p>
+                  <p style={{ fontSize: 30, fontWeight: 700, color: '#F59E0B', margin: 0 }}>₹{(analyticsData.mrr || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>Total Pro Users</p>
+                  <p style={{ fontSize: 30, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>{analyticsData.total_pro || 0}</p>
+                </div>
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>New Pro This Month</p>
+                  <p style={{ fontSize: 30, fontWeight: 700, color: '#22C55E', margin: 0 }}>↑ {analyticsData.new_pro_month || 0}</p>
+                </div>
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>All-Time Sessions</p>
+                  <p style={{ fontSize: 30, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>{analyticsData.all_time_sessions || 0}</p>
+                </div>
+              </div>
+              {/* Row 2 — Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5" style={{ marginBottom: 24 }}>
+                <div style={{ ...CARD, padding: 24 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', margin: '0 0 16px 0' }}>Daily Active Users — Last 30 Days</p>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={analyticsData.dau || []}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
+                      <XAxis dataKey="day" tick={{ fill: '#6B7280', fontSize: 10 }} tickFormatter={v => v?.slice(5)} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }} />
+                      <Line type="monotone" dataKey="count" stroke="#2563EB" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <div style={{ ...CARD, padding: 24 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', margin: '0 0 16px 0' }}>Sector Popularity — Last 30 Days</p>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={(analyticsData.sector_popularity || []).map(r => ({ name: SECTOR_LABELS[r.sector] || r.sector, count: r.count }))} layout="vertical">
+                      <XAxis type="number" tick={{ fill: '#6B7280', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
+                      <Tooltip contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }} />
+                      <Bar dataKey="count" fill="#F59E0B" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {/* Row 3 — Conversion funnel */}
+              <div style={{ ...CARD, padding: 24, marginBottom: 24 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#F9FAFB', margin: '0 0 20px 0' }}>Conversion Funnel — Last 30 Days</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[
+                    { label: 'Signups', value: analyticsData.funnel?.signups || 0, pct: '100%', bg: '#1F2937' },
+                    { label: 'Practiced Once', value: analyticsData.funnel?.practiced || 0, pct: analyticsData.funnel?.signups ? `${Math.round((analyticsData.funnel.practiced / analyticsData.funnel.signups) * 100)}%` : '—', bg: '#1E3A5F' },
+                    { label: 'Pro Users', value: analyticsData.funnel?.pro || 0, pct: analyticsData.funnel?.signups ? `${Math.round((analyticsData.funnel.pro / analyticsData.funnel.signups) * 100)}%` : '—', bg: '#78350F' },
+                  ].map((step, i) => (
+                    <div key={step.label} className="flex items-center gap-2">
+                      <div style={{ background: step.bg, border: '1px solid #374151', borderRadius: 12, padding: '16px 24px', textAlign: 'center', minWidth: 110 }}>
+                        <p style={{ fontSize: 28, fontWeight: 700, color: '#F9FAFB', margin: 0 }}>{step.value.toLocaleString('en-IN')}</p>
+                        <p style={{ fontSize: 12, color: '#9CA3AF', margin: '4px 0 0 0' }}>{step.label}</p>
+                        <p style={{ fontSize: 11, color: '#F59E0B', margin: '2px 0 0 0', fontWeight: 600 }}>{step.pct}</p>
+                      </div>
+                      {i < 2 && <span style={{ fontSize: 20, color: '#374151' }}>→</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Row 4 — Interview health */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>Avg Interview Score</p>
+                  <p style={{ fontSize: 30, fontWeight: 700, color: scoreColor(analyticsData.health?.avg_score || 0), margin: 0 }}>{(analyticsData.health?.avg_score || 0).toFixed(1)}<span style={{ fontSize: 14, color: '#6B7280' }}>/10</span></p>
+                </div>
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>Session Completion Rate</p>
+                  <p style={{ fontSize: 30, fontWeight: 700, color: '#2563EB', margin: 0 }}>{analyticsData.health?.completion_rate || 0}<span style={{ fontSize: 14, color: '#6B7280' }}>%</span></p>
+                </div>
+                <div style={{ ...CARD, padding: '20px 24px', textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: '#9CA3AF', margin: '0 0 8px 0' }}>Most Popular Sector</p>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: '#F59E0B', margin: 0 }}>{SECTOR_LABELS[analyticsData.health?.top_sector] || analyticsData.health?.top_sector || '—'}</p>
+                </div>
+              </div>
+            </>) : (
+              <p style={{ color: '#6B7280', textAlign: 'center', padding: 40 }}>Analytics unavailable. Check function logs.</p>
+            )}
+          </div>
+        )}
 
       </div>
 
